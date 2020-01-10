@@ -1,46 +1,37 @@
 if PLATFORM_WIN32
-no_undefined = -no-undefined
 version_info = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) -avoid-version
 else
-no_undefined =
 version_info = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)
 endif
 
 lib_LTLIBRARIES = libwpg-@WPG_MAJOR_VERSION@.@WPG_MINOR_VERSION@.la
 libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_includedir = $(includedir)/libwpg-@WPG_MAJOR_VERSION@.@WPG_MINOR_VERSION@/libwpg
 libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_include_HEADERS = \
-	libwpg.h \
-	WPGraphics.h \
-	WPGPaintInterface.h
+	$(top_srcdir)/inc/libwpg/libwpg.h \
+	$(top_srcdir)/inc/libwpg/WPGraphics.h
 
-AM_CXXFLAGS = $(WPD_CFLAGS) $(DEBUG_CXXFLAGS)
+AM_CXXFLAGS = -I$(top_srcdir)/inc $(REVENGE_CFLAGS) $(WPD_CFLAGS) $(DEBUG_CXXFLAGS) -DLIBWPG_BUILD=1
 
-libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_la_LIBADD  = $(WPD_LIBS) @LIBWPG_WIN32_RESOURCE@
+libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_la_LIBADD  = $(WPD_LIBS) $(REVENGE_LIBS) @LIBWPG_WIN32_RESOURCE@
 libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_la_DEPENDENCIES = @LIBWPG_WIN32_RESOURCE@
-libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_la_LDFLAGS = $(version_info) -export-dynamic $(no_undefined)
+libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_la_LDFLAGS = $(version_info) -export-dynamic -no-undefined
 libwpg_@WPG_MAJOR_VERSION@_@WPG_MINOR_VERSION@_la_SOURCES = \
 	WPGraphics.cpp \
 	WPGDashArray.cpp \
 	WPGColor.cpp \
 	WPGHeader.cpp \
-	WPGSVGGenerator.cpp \
 	WPGXParser.cpp \
 	WPG1Parser.cpp \
 	WPG2Parser.cpp \
 	WPGBitmap.cpp \
-	WPGInternalStream.cpp \
-	libwpg.h \
 	libwpg_utils.h \
 	WPGColor.h \
 	WPGDashArray.h \
 	WPGHeader.h \
-	WPGSVGGenerator.h \
 	WPGXParser.h \
 	WPG1Parser.h \
 	WPG2Parser.h \
-	WPGBitmap.h \
-	WPGInternalStream.h\
-	WPGPaintInterface.h
+	WPGBitmap.h
 
 if OS_WIN32
 
@@ -52,9 +43,7 @@ endif
 
 
 EXTRA_DIST = \
-	libwpg.h.in \
-	libwpg.rc.in \
-	makefile.mk
+	libwpg.rc.in
 
 # These may be in the builddir too
 BUILD_EXTRA_DIST = \

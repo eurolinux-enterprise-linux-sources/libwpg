@@ -65,9 +65,9 @@ libwpg::WPGColor &libwpg::WPGColor::operator=(const libwpg::WPGColor &color)
 	return *this;
 }
 
-const ::WPXString libwpg::WPGColor::getColorString() const
+const ::librevenge::RVNGString libwpg::WPGColor::getColorString() const
 {
-	::WPXString sColor;
+	::librevenge::RVNGString sColor;
 	sColor.sprintf("#%.2x%.2x%.2x", red, green, blue);
 	return sColor;
 }

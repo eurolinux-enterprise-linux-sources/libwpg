@@ -8,6 +8,7 @@
  *
  * Major Contributor(s):
  * Copyright (C) 2006 Ariya Hidayat (ariya@kde.org)
+ * Copyright (C) 2004 Marc Oude Kotte (marc@solcon.nl)
  *
  * For minor contributions see the git repository.
  *
@@ -23,33 +24,10 @@
  * Corel Corporation or Corel Corporation Limited."
  */
 
-#ifndef __WPGRAPHICS_H__
-#define __WPGRAPHICS_H__
+#ifndef __LIBWPG_H__
+#define __LIBWPG_H__
 
-#include <libwpd/WPXString.h>
+#include "WPGraphics.h"
 
-class WPXInputStream;
-
-namespace libwpg
-{
-enum WPGFileFormat { WPG_AUTODETECT = 0, WPG_WPG1, WPG_WPG2 };
-
-class WPGPaintInterface;
-
-class WPGraphics
-{
-public:
-
-	static bool isSupported(WPXInputStream *input);
-
-	static bool parse(WPXInputStream *input, WPGPaintInterface *painter, WPGFileFormat fileFormat = WPG_AUTODETECT);
-	static bool parse(const unsigned char *data, unsigned long size, WPGPaintInterface *painter, WPGFileFormat fileFormat = WPG_AUTODETECT);
-
-	static bool generateSVG(WPXInputStream *input, WPXString &output, WPGFileFormat fileFormat = WPG_AUTODETECT);
-	static bool generateSVG(const unsigned char *data, unsigned long size, WPXString &output, WPGFileFormat fileFormat = WPG_AUTODETECT);
-};
-
-} // namespace libwpg
-
-#endif //  __WPGRAPHICS_H__
+#endif
 /* vim:set shiftwidth=4 softtabstop=4 noexpandtab: */

@@ -4,7 +4,7 @@ pkgconfdir = $(libdir)/pkgconfig
 
 pkgconf_DATA = libwpg-@WPG_MAJOR_VERSION@.@WPG_MINOR_VERSION@.pc
 
-SUBDIRS = src build docs
+SUBDIRS = src inc build docs
 
 EXTRA_DIST = \
 	AUTHORS \
@@ -13,13 +13,13 @@ EXTRA_DIST = \
 	NEWS \
 	README \
 	autogen.sh \
-	libwpg-@WPG_MAJOR_VERSION@.@WPG_MINOR_VERSION@.pc.in \
+	libwpg.pc.in \
 	libwpg-zip.in \
 	libwpg.spec \
 	libwpg.spec.in
 
 distclean-local:
-	rm -rf *.cache *~
+	rm -rf *.cache *~ *.pc
 
 rpm: dist
 	rpmbuild -ta $(PACKAGE)-$(VERSION).tar.gz

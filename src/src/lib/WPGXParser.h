@@ -28,9 +28,9 @@
 #ifndef __WPGXPARSER_H__
 #define __WPGXPARSER_H__
 
-#include "WPGPaintInterface.h"
-#include <libwpd-stream/WPXStream.h>
-#include <libwpd/libwpd.h>
+#include <libwpg/libwpg.h>
+#include <librevenge-stream/librevenge-stream.h>
+#include <librevenge/librevenge.h>
 #include "WPGColor.h"
 
 #include <map>
@@ -38,9 +38,9 @@
 class WPGXParser
 {
 public:
-	WPGXParser(WPXInputStream *input, libwpg::WPGPaintInterface *painter);
+	WPGXParser(librevenge::RVNGInputStream *input, librevenge::RVNGDrawingInterface *painter);
 	WPGXParser(const WPGXParser &parser);
-	virtual ~WPGXParser() {};
+	virtual ~WPGXParser() {}
 	virtual bool parse() = 0;
 
 	unsigned char readU8();
@@ -52,91 +52,102 @@ public:
 	WPGXParser &operator=(const WPGXParser &parser);
 
 protected:
-	WPXInputStream *m_input;
-	libwpg::WPGPaintInterface *m_painter;
+	librevenge::RVNGInputStream *m_input;
+	librevenge::RVNGDrawingInterface *m_painter;
 	std::map<int,libwpg::WPGColor> m_colorPalette;
 };
 
-class WPGTextDataHandler : public ::WPXDocumentInterface
+class WPGTextDataHandler : public ::librevenge::RVNGTextInterface
 {
 public:
-	WPGTextDataHandler(libwpg::WPGPaintInterface *painter) :
+	WPGTextDataHandler(librevenge::RVNGDrawingInterface *painter) :
 		m_painter(painter),
 		m_fontName("Times New Roman"),
 		m_paragraphStyle(),
 		m_textStyle() {}
 
 	~WPGTextDataHandler() {}
-	void setDocumentMetaData(const WPXPropertyList & /* propList */) {}
+	void setDocumentMetaData(const librevenge::RVNGPropertyList & /* propList */) {}
 
-	void startDocument() {}
+	void startDocument(const librevenge::RVNGPropertyList & /* propList */) {}
 	void endDocument() {}
 
-	void startSubDocument() {}
-	void endSubDocument();
+	void defineEmbeddedFont(const librevenge::RVNGPropertyList & /* propList */) {}
 
-	void definePageStyle(const WPXPropertyList & /* propList */) {}
-	void openPageSpan(const WPXPropertyList & /* propList */) {}
+	void definePageStyle(const librevenge::RVNGPropertyList & /* propList */) {}
+	void openPageSpan(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closePageSpan() {}
-	void openHeader(const WPXPropertyList & /* propList */) {}
+	void openHeader(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeHeader() {}
-	void openFooter(const WPXPropertyList & /* propList */) {}
+	void openFooter(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeFooter() {}
 
-	void defineParagraphStyle(const WPXPropertyList & /* propList */, const WPXPropertyListVector & /* tabStops */) {}
-	void openParagraph(const WPXPropertyList &propList, const WPXPropertyListVector &tabStops);
+	void defineParagraphStyle(const librevenge::RVNGPropertyList & /* propList */) {}
+	void openParagraph(const librevenge::RVNGPropertyList &propList);
 	void closeParagraph();
 
-	void defineCharacterStyle(const WPXPropertyList & /* propList */) {}
-	void openSpan(const WPXPropertyList &propList);
+	void defineCharacterStyle(const librevenge::RVNGPropertyList & /* propList */) {}
+	void openSpan(const librevenge::RVNGPropertyList &propList);
 	void closeSpan();
 
-	void defineSectionStyle(const WPXPropertyList & /* propList */, const WPXPropertyListVector & /* columns */) {}
-	void openSection(const WPXPropertyList & /* propList */, const WPXPropertyListVector & /* columns */) {}
+	void openLink(const librevenge::RVNGPropertyList & /* propList */) {}
+	void closeLink() {}
+
+	void defineSectionStyle(const librevenge::RVNGPropertyList & /* propList */) {}
+	void openSection(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeSection() {}
 
 	void insertTab();
 	void insertSpace();
-	void insertText(const WPXString &text);
+	void insertText(const librevenge::RVNGString &text);
 	void insertLineBreak();
-	void insertField(const WPXString & /* type */, const WPXPropertyList & /* propList */) {}
+	void insertField(const librevenge::RVNGPropertyList & /* propList */) {}
 
-	void defineOrderedListLevel(const WPXPropertyList & /* propList */) {}
-	void defineUnorderedListLevel(const WPXPropertyList & /* propList */) {}
-	void openOrderedListLevel(const WPXPropertyList & /* propList */) {}
-	void openUnorderedListLevel(const WPXPropertyList & /* propList */) {}
+	void openOrderedListLevel(const librevenge::RVNGPropertyList & /* propList */) {}
+	void openUnorderedListLevel(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeOrderedListLevel() {}
 	void closeUnorderedListLevel() {}
-	void openListElement(const WPXPropertyList &propList, const WPXPropertyListVector &tabStops);
+	void openListElement(const librevenge::RVNGPropertyList &propList);
 	void closeListElement();
 
-	void openFootnote(const WPXPropertyList & /* propList */) {}
+	void openFootnote(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeFootnote() {}
-	void openEndnote(const WPXPropertyList & /* propList */) {}
+	void openEndnote(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeEndnote() {}
-	void openComment(const WPXPropertyList & /* propList */) {}
+	void openComment(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeComment() {}
-	void openTextBox(const WPXPropertyList & /* propList */) {}
+	void openTextBox(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeTextBox() {}
 
-	void openTable(const WPXPropertyList & /* propList */, const WPXPropertyListVector & /* columns */) {}
-	void openTableRow(const WPXPropertyList & /* propList */) {}
+	void openTable(const librevenge::RVNGPropertyList & /* propList */) {}
+	void openTableRow(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeTableRow() {}
-	void openTableCell(const WPXPropertyList & /* propList */) {}
+	void openTableCell(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeTableCell() {}
-	void insertCoveredTableCell(const WPXPropertyList & /* propList */) {}
+	void insertCoveredTableCell(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeTable() {}
 
-	void openFrame(const WPXPropertyList & /* propList */) {}
+	void openFrame(const librevenge::RVNGPropertyList & /* propList */) {}
 	void closeFrame() {}
 
-	void insertBinaryObject(const WPXPropertyList & /* propList */, const WPXBinaryData & /* data */) {}
-	void insertEquation(const WPXPropertyList & /* propList */, const WPXString & /* data */) {}
+	void openGroup(const librevenge::RVNGPropertyList & /* propList */) {}
+	void closeGroup() {}
+
+	void defineGraphicStyle(const librevenge::RVNGPropertyList & /* propList */) {}
+	void drawRectangle(const librevenge::RVNGPropertyList & /* propList */) {}
+	void drawEllipse(const librevenge::RVNGPropertyList & /* propList */) {}
+	void drawPolygon(const librevenge::RVNGPropertyList & /* propList */) {}
+	void drawPolyline(const librevenge::RVNGPropertyList & /* propList */) {}
+	void drawPath(const librevenge::RVNGPropertyList & /* propList */) {}
+	void drawConnector(const librevenge::RVNGPropertyList & /* propList */) {}
+
+	void insertBinaryObject(const librevenge::RVNGPropertyList & /* propList */) {}
+	void insertEquation(const librevenge::RVNGPropertyList & /* propList */) {}
 
 private:
-	libwpg::WPGPaintInterface *m_painter;
-	::WPXString m_fontName;
-	::WPXPropertyList m_paragraphStyle, m_textStyle;
+	librevenge::RVNGDrawingInterface *m_painter;
+	::librevenge::RVNGString m_fontName;
+	::librevenge::RVNGPropertyList m_paragraphStyle, m_textStyle;
 	// Unimplemented to prevent compiler from creating crasher ones
 	WPGTextDataHandler(const WPGTextDataHandler &);
 	WPGTextDataHandler &operator=(const WPGTextDataHandler &);

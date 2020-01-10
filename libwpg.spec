@@ -1,37 +1,42 @@
-%global apiversion 0.2
+%global apiversion 0.3
 
 Name:           libwpg
-Version:        0.2.2
-Release:        4%{?dist}
-Summary:        Library for reading WordPerfect Graphics images
+Version:        0.3.0
+Release:        1%{?dist}
+Summary:        A library for import of WordPerfect Graphics images
 
-Group:          System Environment/Libraries
 License:        LGPLv2+ or MPLv2.0
 URL:            http://libwpg.sourceforge.net/
 Source0:        http://download.sourceforge.net/libwpg/%{name}-%{version}.tar.xz
 
-BuildRequires:  libwpd-devel
 BuildRequires:  doxygen
+BuildRequires:  help2man
+BuildRequires:  perl(Getopt::Std)
+BuildRequires:  pkgconfig(librevenge-0.0)
+BuildRequires:  pkgconfig(libwpd-0.10)
 
 %description
-Libwpg project is a library and to work with graphics in WPG
-(WordPerfect Graphics) format. WPG is the format used among others
-in Corel software, such as WordPerfect and Presentations.
-
+%{name} is a library for import of images in WPG
+(WordPerfect Graphics) format. WPG is the format used among others in
+Corel software, such as WordPerfect and Presentations.
 
 %package devel
 Summary:        Development files for %{name}
-Group:          Development/Libraries
 Requires:       %{name}%{?_isa} = %{version}-%{release}
 
 %description devel
 The %{name}-devel package contains libraries and header files for
 developing applications that use %{name}.
 
+%package doc
+Summary: Documentation of %{name} API
+BuildArch: noarch
+
+%description doc
+The %{name}-doc package contains API documentation for %{name}.
 
 %package tools
-Summary:        Tools to convert WordPerfect Graphics images
-Group:          Applications/Multimedia
+Summary:        Tools to convert WordPerfect Graphics images to other formats
 # wpg2svgbatch.pl says "GPL", without specifying version, and points to
 # http://www.gnu.org/copyleft/gpl.html . I assume this means "any
 # version".
@@ -39,14 +44,11 @@ License:        (LGPLv2+ or MPLv2.0) and GPL+
 Requires:       %{name}%{?_isa} = %{version}-%{release}
 
 %description tools
-This package contains tools to work with graphics in WPG (WordPerfect
-Graphics) format. WPG is the format used among others in Corel software,
-such as WordPerfect and Presentations.
-
+Tools to convert WordPerfect Graphics images to other formats. Supported
+are: SVG, raw.
 
 %prep
 %setup -q
-
 
 %build
 %configure --disable-static --disable-werror
@@ -58,39 +60,50 @@ make %{?_smp_mflags} V=1
 sed 's/\r//' -i ChangeLog
 find docs/doxygen/html |xargs touch -r docs/doxygen/doxygen.cfg
 
+export LD_LIBRARY_PATH=`pwd`/src/lib/.libs${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+help2man -N -n 'debug the conversion library' -o wpg2raw.1 ./src/conv/raw/.libs/wpg2raw
+help2man -N -n 'convert WordPerfect Graphics into SVG' -o wpg2svg.1 ./src/conv/svg/.libs/wpg2svg
+help2man -N -n 'batch convert WordPerfect Graphics files into SVG' \
+    --help-option=-h --no-discard-stderr \
+    -o wpg2svgbatch.pl.1 ./src/conv/svg/wpg2svgbatch.pl
 
 %install
-# Documentation is intentionally not installed here,
-# it is included as -devel %%doc
-make SUBDIRS="" install DESTDIR=$RPM_BUILD_ROOT
-make -C src install DESTDIR=$RPM_BUILD_ROOT
-find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
+make install DESTDIR=%{buildroot}
+find %{buildroot} -name '*.la' -exec rm -f {} ';'
+# we install API docs directly from build
+rm -rf %{buildroot}/%{_docdir}/%{name}
 
+install -m 0755 -d %{buildroot}/%{_mandir}/man1
+install -m 0644 wpg2*.1 %{buildroot}/%{_mandir}/man1
 
 %post -p /sbin/ldconfig
 %postun -p /sbin/ldconfig
-
 
 %files
 %doc AUTHORS ChangeLog COPYING.LGPL COPYING.MPL
 %{_libdir}/%{name}-%{apiversion}.so.*
 
-
 %files devel
-%doc docs/doxygen/html
 %{_includedir}/%{name}-%{apiversion}
 %{_libdir}/%{name}-%{apiversion}.so
 %{_libdir}/pkgconfig/%{name}-%{apiversion}.pc
 
+%files doc
+%doc COPYING.LGPL COPYING.MPL
+%doc docs/doxygen/html
 
 %files tools
-%doc COPYING.LGPL COPYING.MPL
 %{_bindir}/wpg2raw
 %{_bindir}/wpg2svg
 %{_bindir}/wpg2svgbatch.pl
-
+%{_mandir}/man1/wpg2raw.1*
+%{_mandir}/man1/wpg2svg.1*
+%{_mandir}/man1/wpg2svgbatch.pl.1*
 
 %changelog
+* Fri Apr 17 2015 David Tardon <dtardon@redhat.com> - 0.3.0-1
+- Resolves: rhbz#1207767 rebase to 0.3.0
+
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 0.2.2-4
 - Mass rebuild 2014-01-24
 

@@ -27,8 +27,9 @@
 
 #define DUMP_BINARY_DATA 0
 
+#include <librevenge/librevenge.h>
+#include <libwpd/libwpd.h>
 #include "WPG2Parser.h"
-#include "WPGPaintInterface.h"
 #include "libwpg_utils.h"
 
 #include <math.h>
@@ -42,6 +43,8 @@
 #if DUMP_BINARY_DATA
 #include <sstream>
 #endif
+
+using namespace libwpd;
 
 namespace
 {
@@ -224,7 +227,7 @@ public:
 	{}
 };
 
-WPG2Parser::WPG2Parser(WPXInputStream *input, libwpg::WPGPaintInterface *painter, bool isEmbedded):
+WPG2Parser::WPG2Parser(librevenge::RVNGInputStream *input, librevenge::RVNGDrawingInterface *painter, bool isEmbedded):
 	WPGXParser(input, painter),
 	m_recordLength(0),
 	m_recordEnd(0),
@@ -275,9 +278,9 @@ WPG2Parser::WPG2Parser(WPXInputStream *input, libwpg::WPGPaintInterface *painter
 	m_brushBackColor = ::libwpg::WPGColor(0xff,0xff,0xff);
 
 	m_style.insert("svg:stroke-color", m_penForeColor.getColorString());
-	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 	m_style.insert("draw:fill-color", m_brushForeColor.getColorString());
-	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
 	resetPalette();
 	m_style.insert("draw:fill", "solid");
@@ -357,7 +360,7 @@ bool WPG2Parser::parse()
 		{ 0x00, 0, 0 } // end marker
 	};
 
-	while(!m_input->atEOS())
+	while (!m_input->isEnd())
 	{
 #ifdef DEBUG
 		long recordPos = m_input->tell();
@@ -366,22 +369,22 @@ bool WPG2Parser::parse()
 		int recordType = readU8();
 		if (recordType == 0 || recordType > (int)0x3f)
 			break;
-		int extension = readVariableLengthInteger();
-		m_recordLength = readVariableLengthInteger();
+		int extension = (int) readVariableLengthInteger();
+		m_recordLength = (int) readVariableLengthInteger();
 		m_recordEnd = m_input->tell() + m_recordLength - 1;
 
 		// inside a subgroup, one less sub record
-		if(!m_groupStack.empty())
+		if (!m_groupStack.empty())
 			m_groupStack.top().subIndex--;
 
 		// search function to handler this record
 		int index = -1;
-		for(int i = 0; (index < 0) && handlers[i].name; i++)
-			if(handlers[i].type == recordType)
+		for (int i = 0; (index < 0) && handlers[i].name; i++)
+			if (handlers[i].type == recordType)
 				index = i;
 
 		WPG_DEBUG_MSG(("\n"));
-		if(index < 0)
+		if (index < 0)
 		{
 			WPG_DEBUG_MSG(("Unknown record type 0x%02x at %li  size %d  extension %d\n",
 			               recordType, recordPos, m_recordLength, extension));
@@ -390,7 +393,7 @@ bool WPG2Parser::parse()
 		{
 			Method recordHandler = handlers[index].handler;
 
-			if(!recordHandler)
+			if (!recordHandler)
 				WPG_DEBUG_MSG(("Record '%s' (ignored) type 0x%02x at %li  size %d  extension %d\n",
 				               handlers[index].name, recordType, recordPos, m_recordLength, extension));
 			else
@@ -404,24 +407,24 @@ bool WPG2Parser::parse()
 		}
 
 		// the last subgroup
-		if(!m_groupStack.empty())
+		if (!m_groupStack.empty())
 		{
 			WPGGroupContext &context = m_groupStack.top();
-			if(context.subIndex == 0)
+			if (context.subIndex == 0)
 			{
-				if(context.isCompoundPolygon())
+				if (context.isCompoundPolygon())
 					flushCompoundPolygon();
 				m_groupStack.pop();
 			}
 		}
 
 		// we enter another subgroup, save the context to stack
-		if(extension > 0)
+		if (extension > 0)
 		{
 			WPGGroupContext context;
 			context.parentType = recordType;
-			context.subIndex = extension;
-			if(context.isCompoundPolygon())
+			context.subIndex = (unsigned int) extension;
+			if (context.isCompoundPolygon())
 			{
 				context.compoundMatrix = m_compoundMatrix;
 				context.compoundFilled = m_compoundFilled;
@@ -437,9 +440,9 @@ bool WPG2Parser::parse()
 			WPG_DEBUG_MSG(("Current stream position: %li\n", m_input->tell()));
 		}
 
-		if(m_exit) break;
+		if (m_exit) break;
 
-		m_input->seek(m_recordEnd+1, WPX_SEEK_SET);
+		m_input->seek(m_recordEnd+1, librevenge::RVNG_SEEK_SET);
 	}
 
 	if (!m_exit)
@@ -452,7 +455,7 @@ bool WPG2Parser::parse()
 static const char *describePrecision(unsigned char precision)
 {
 	const char *result = "Unknown";
-	switch(precision)
+	switch (precision)
 	{
 	case 0:
 		result = "single";
@@ -469,7 +472,7 @@ static const char *describePrecision(unsigned char precision)
 static const char *describeGradient(unsigned char gradientType)
 {
 	const char *result = "Unknown";
-	switch(gradientType)
+	switch (gradientType)
 	{
 	case 0:
 		result = "None";
@@ -529,14 +532,14 @@ void WPG2Parser::handleStartWPG()
 	// sanity check
 	m_xres = horizontalUnit;
 	m_yres = verticalUnit;
-	if((horizontalUnit==0) || (verticalUnit==0))
+	if ((horizontalUnit==0) || (verticalUnit==0))
 	{
 		m_xres = m_yres = 1200;
 		WPG_DEBUG_MSG(("Warning ! Insane unit of measure"));
 	}
 
 	// danger if we do not recognize the precision code
-	if(precision != 0 && precision != 1)
+	if (precision != 0 && precision != 1)
 	{
 		m_success = false;
 		m_exit = true;
@@ -550,7 +553,7 @@ void WPG2Parser::handleStartWPG()
 	long viewportX2 = (m_doublePrecision) ? readS32() : readS16();
 	long viewportY2 = (m_doublePrecision) ? readS32() : readS16();
 #else
-	m_input->seek(((m_doublePrecision) ? 16 : 8), WPX_SEEK_CUR);
+	m_input->seek(((m_doublePrecision) ? 16 : 8), librevenge::RVNG_SEEK_CUR);
 #endif
 	long imageX1 = (m_doublePrecision) ? readS32() : readS16();
 	long imageY1 = (m_doublePrecision) ? readS32() : readS16();
@@ -560,12 +563,12 @@ void WPG2Parser::handleStartWPG()
 	// used to adjust coordinates
 	m_xofs = (imageX1 < imageX2) ? imageX1 : imageX2;
 	m_yofs = (imageY1 < imageY2) ? imageY1 : imageX2;
-	m_width = (imageX2 > imageX1 ) ? imageX2-imageX1 : imageX1-imageX2;
+	m_width = (imageX2 > imageX1) ? imageX2-imageX1 : imageX1-imageX2;
 	m_height = (imageY2 > imageY1) ? imageY2-imageY1 : imageY1-imageY2;
 
 	WPG_DEBUG_MSG(("StartWPG 2\n"));
-	WPG_DEBUG_MSG(("  Horizontal unit of measure : %d pixels/inch\n", horizontalUnit));
-	WPG_DEBUG_MSG(("    Vertical unit of measure : %d pixels/inch\n", verticalUnit));
+	WPG_DEBUG_MSG(("  Horizontal unit of measure : %d pixels/inch\n", (int) horizontalUnit));
+	WPG_DEBUG_MSG(("    Vertical unit of measure : %d pixels/inch\n", (int) verticalUnit));
 	WPG_DEBUG_MSG(("              Data precision : %d (%s)\n", precision, describePrecision(precision)));
 	WPG_DEBUG_MSG(("                 Viewport X1 : %li\n", viewportX1));
 	WPG_DEBUG_MSG(("                 Viewport Y1 : %li\n", viewportY1));
@@ -580,11 +583,12 @@ void WPG2Parser::handleStartWPG()
 	WPG_DEBUG_MSG(("                       width : %li\n", m_width));
 	WPG_DEBUG_MSG(("                      height : %li\n", m_height));
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:width", ((TO_DOUBLE(m_width)) / m_xres));
 	propList.insert("svg:height", ((TO_DOUBLE(m_height)) / m_yres));
 
-	m_painter->startGraphics(propList);
+	m_painter->startDocument(::librevenge::RVNGPropertyList());
+	m_painter->startPage(propList);
 
 	static const int WPG2_defaultPenDashes[] =
 	{
@@ -609,14 +613,14 @@ void WPG2Parser::handleStartWPG()
 
 	// create default pen styles
 	int styleNo = 0;
-	for(int i = 0; (long)i < (long)(sizeof(WPG2_defaultPenDashes)/sizeof(WPG2_defaultPenDashes[0]));)
+	for (int i = 0; (long)i < (long)(sizeof(WPG2_defaultPenDashes)/sizeof(WPG2_defaultPenDashes[0]));)
 	{
 		int segments = 2 * WPG2_defaultPenDashes[i++];
-		if(segments == 0) break;
+		if (segments == 0) break;
 		libwpg::WPGDashArray dashArray;
-		for(int j = 0; j < segments; j++, i++)
+		for (int j = 0; j < segments; j++, i++)
 			dashArray.add(WPG2_defaultPenDashes[i]*3.6/218.0);
-		m_dashArrayStyles[styleNo] = dashArray;
+		m_dashArrayStyles[(unsigned int)styleNo] = dashArray;
 		styleNo++;
 	}
 	m_graphicsStarted = true;
@@ -627,10 +631,11 @@ void WPG2Parser::handleEndWPG()
 	if (!m_graphicsStarted)
 		return;
 	// sentinel
-	if(m_layerOpened)
+	if (m_layerOpened)
 		m_painter->endLayer();
 
-	m_painter->endGraphics();
+	m_painter->endPage();
+	m_painter->endDocument();
 	m_exit = true;
 }
 
@@ -641,7 +646,7 @@ void WPG2Parser::handleFormSettings()
 	unsigned int h = (m_doublePrecision) ? readU32() : readU16();
 	double width = (TO_DOUBLE(w)) / m_xres;
 	double height = (TO_DOUBLE(h)) / m_yres;
-	m_input->seek(((m_doublePrecision) ? 4 : 2), WPX_SEEK_CUR);
+	m_input->seek(((m_doublePrecision) ? 4 : 2), librevenge::RVNG_SEEK_CUR);
 	unsigned int ml = (m_doublePrecision) ? readU32() : readU16();
 	unsigned int mr = (m_doublePrecision) ? readU32() : readU16();
 	unsigned int mt = (m_doublePrecision) ? readU32() : readU16();
@@ -660,17 +665,17 @@ void WPG2Parser::handleLayer()
 {
 	if (!m_graphicsStarted)
 		return;
-	WPXPropertyList propList;
+	librevenge::RVNGPropertyList propList;
 	propList.insert("svg:id", (int)readU16());
 
 	// close previous one
-	if(m_layerOpened)
+	if (m_layerOpened)
 		m_painter->endLayer();
 
 	m_painter->startLayer(propList);
 	m_layerOpened = true;
 
-	WPG_DEBUG_MSG(("  Layer Id: %d\n", m_layerId));
+	WPG_DEBUG_MSG(("  Layer Id: %d\n", (int) m_layerId));
 }
 
 void WPG2Parser::handleCompoundPolygon()
@@ -693,27 +698,31 @@ void WPG2Parser::flushCompoundPolygon()
 		return;
 	WPGGroupContext &context = m_groupStack.top();
 
-	WPXPropertyList tmpStyle = m_style;
+	librevenge::RVNGPropertyList tmpStyle = m_style;
 
 	if (!context.compoundFilled)
 		tmpStyle.insert("draw:fill", "none");
 	if (!context.compoundFramed)
 		tmpStyle.insert("draw:stroke", "none");
 
-	if(context.compoundWindingRule)
+	if (context.compoundWindingRule)
 		tmpStyle.insert("svg:fill-rule", "nonzero");
 	else
 		tmpStyle.insert("svg:fill-rule", "evenodd");
 
-	m_painter->setStyle( tmpStyle, context.compoundFilled ? m_gradient : ::WPXPropertyListVector() );
+	if (context.compoundFilled || m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
 
 	if (context.compoundClosed)
 	{
-		WPXPropertyList element;
-		element.insert("libwpg:path-action", "Z");
+		librevenge::RVNGPropertyList element;
+		element.insert("librevenge:path-action", "Z");
 		context.compoundPath.append(element);
 	}
-	m_painter->drawPath(context.compoundPath);
+	librevenge::RVNGPropertyList propList;
+	propList.insert("svg:d", context.compoundPath);
+	m_painter->drawPath(propList);
 }
 
 void WPG2Parser::handlePenStyleDefinition()
@@ -724,7 +733,7 @@ void WPG2Parser::handlePenStyleDefinition()
 	unsigned int segments = readU16();
 
 	libwpg::WPGDashArray dashArray;
-	for(unsigned i = 0; i < segments; i++)
+	for (unsigned i = 0; i < segments; i++)
 	{
 		unsigned int p = (m_doublePrecision) ? readU32() : readU16();
 		unsigned int q = (m_doublePrecision) ? readU32() : readU16();
@@ -733,8 +742,8 @@ void WPG2Parser::handlePenStyleDefinition()
 	}
 	m_dashArrayStyles[style] = dashArray;
 
-	WPG_DEBUG_MSG(("          Style : %d\n", style));
-	WPG_DEBUG_MSG(("  Segment pairs : %d\n", segments));
+	WPG_DEBUG_MSG(("          Style : %d\n", (int) style));
+	WPG_DEBUG_MSG(("  Segment pairs : %d\n", (int) segments));
 }
 
 #if 0
@@ -754,14 +763,14 @@ void WPG2Parser::handleColorPalette()
 	unsigned startIndex = readU16();
 	unsigned numEntries = readU16();
 
-	for(unsigned i = 0; i < numEntries; i++)
+	for (unsigned i = 0; i < numEntries; i++)
 	{
 		unsigned char red = readU8();
 		unsigned char green = readU8();
 		unsigned char blue = readU8();
 		unsigned char alpha = 0xff - readU8();
 		libwpg::WPGColor color(red, green, blue, alpha);
-		m_colorPalette[startIndex+i] = color;
+		m_colorPalette[int(startIndex+i)] = color;
 		WPG_DEBUG_MSG(("Index#%d: RGB %s\n", startIndex+i, color.getColorString().cstr()));
 	}
 }
@@ -773,14 +782,14 @@ void WPG2Parser::handleDPColorPalette()
 	unsigned startIndex = readU16();
 	unsigned numEntries = readU16();
 
-	for(unsigned int i = 0; i < numEntries; i++)
+	for (unsigned int i = 0; i < numEntries; i++)
 	{
 		unsigned char red = readU16() >> 8 ;
 		unsigned char green = readU16() >> 8 ;
 		unsigned char blue = readU16() >> 8 ;
 		unsigned char alpha = 0xff - (readU16() >> 8) ;
 		libwpg::WPGColor color(red, green, blue, alpha);
-		m_colorPalette[startIndex+i] = color;
+		m_colorPalette[int(startIndex+i)] = color;
 		WPG_DEBUG_MSG(("Index#%d: RGB %s\n", startIndex+i, color.getColorString().cstr()));
 	}
 }
@@ -789,7 +798,7 @@ void WPG2Parser::handlePenForeColor()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -810,7 +819,7 @@ void WPG2Parser::handleDPPenForeColor()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -824,7 +833,7 @@ void WPG2Parser::handleDPPenForeColor()
 	unsigned char alpha = 0xff - ((m_doublePrecision) ? readU16()>>8 : readU8());
 
 	m_style.insert("svg:stroke-color", libwpg::WPGColor(red, green, blue, alpha).getColorString());
-	m_style.insert("svg:stroke-opacity", libwpg::WPGColor(red, green, blue, alpha).getOpacity(), WPX_PERCENT);
+	m_style.insert("svg:stroke-opacity", libwpg::WPGColor(red, green, blue, alpha).getOpacity(), librevenge::RVNG_PERCENT);
 	m_penForeColor = libwpg::WPGColor(red, green, blue, alpha);
 
 	WPG_DEBUG_MSG(("   Foreground color (RGBA): %d %d %d %d\n", red, green, blue, alpha));
@@ -845,7 +854,7 @@ void WPG2Parser::handlePenBackColor()
 	m_penBackColor = libwpg::WPGColor(red, green, blue, alpha);
 
 	m_style.insert("svg:stroke-color", m_penForeColor.getColorString());
-	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
 	WPG_DEBUG_MSG(("   Background color (RGBA): %d %d %d %d\n", red, green, blue, alpha));
 }
@@ -863,12 +872,12 @@ void WPG2Parser::handleDPPenBackColor()
 	unsigned int blue = (m_doublePrecision)  ? readU16()>>8 : readU8();
 	unsigned int alpha = 0xff - ((m_doublePrecision) ? readU16()>>8 : readU8());
 
-	m_penBackColor = libwpg::WPGColor(red, green, blue, alpha);
+	m_penBackColor = libwpg::WPGColor((int) red, (int) green, (int) blue, (int) alpha);
 
 	m_style.insert("svg:stroke-color", m_penForeColor.getColorString());
-	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
-	WPG_DEBUG_MSG(("   Background color (RGBA): %d %d %d %d\n", red, green, blue, alpha));
+	WPG_DEBUG_MSG(("   Background color (RGBA): %d %d %d %d\n", (int) red, (int) green, (int) blue, (int) alpha));
 }
 
 void WPG2Parser::setPenStyle()
@@ -878,10 +887,10 @@ void WPG2Parser::setPenStyle()
 	{
 		double strokeWidth = m_style["svg:stroke-width"] ? m_style["svg:stroke-width"]->getDouble() : 0.0;
 		m_style.insert("draw:dots1", m_dashArray.getDots1());
-		m_style.insert("draw:dots1-length", 72.0*72.0*strokeWidth*(m_dashArray.getDots1Length()), WPX_POINT);
+		m_style.insert("draw:dots1-length", 72.0*72.0*strokeWidth*(m_dashArray.getDots1Length()), librevenge::RVNG_POINT);
 		m_style.insert("draw:dots2", m_dashArray.getDots2());
-		m_style.insert("draw:dots2-length", 72.0*72.0*strokeWidth*(m_dashArray.getDots2Length()), WPX_POINT);
-		m_style.insert("draw:distance", 72.0*72.0*strokeWidth*(m_dashArray.getDistance()), WPX_POINT);
+		m_style.insert("draw:dots2-length", 72.0*72.0*strokeWidth*(m_dashArray.getDots2Length()), librevenge::RVNG_POINT);
+		m_style.insert("draw:distance", 72.0*72.0*strokeWidth*(m_dashArray.getDistance()), librevenge::RVNG_POINT);
 	}
 }
 
@@ -889,7 +898,7 @@ void WPG2Parser::handlePenStyle()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -907,14 +916,14 @@ void WPG2Parser::handlePenStyle()
 
 	setPenStyle();
 
-	WPG_DEBUG_MSG(("   Pen style : %d\n", style));
+	WPG_DEBUG_MSG(("   Pen style : %d\n", (int) style));
 }
 
 void WPG2Parser::handlePenSize()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -925,14 +934,14 @@ void WPG2Parser::handlePenSize()
 
 	m_style.insert("svg:stroke-width", (TO_DOUBLE(width) / m_xres));
 
-	WPG_DEBUG_MSG(("   Width: %d\n", width));
+	WPG_DEBUG_MSG(("   Width: %d\n", (int) width));
 }
 
 void WPG2Parser::handleDPPenSize()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -944,14 +953,14 @@ void WPG2Parser::handleDPPenSize()
 	m_style.insert("svg:stroke-width", TO_DOUBLE(width) / m_xres / 256);
 //	m_pen.height = TO_DOUBLE(height) / m_yres / 256;
 
-	WPG_DEBUG_MSG(("   Width: %li\n", width));
+	WPG_DEBUG_MSG(("   Width: %li\n", (long) width));
 }
 
 void WPG2Parser::handleLineCap()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -965,7 +974,7 @@ void WPG2Parser::handleLineJoin()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -979,7 +988,7 @@ void WPG2Parser::handleBrushGradient()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -992,8 +1001,8 @@ void WPG2Parser::handleBrushGradient()
 	unsigned yref = readU16();
 #ifdef DEBUG
 	unsigned flag = readU16();
-	bool granular = ((flag & (1<<6))>>6) == 1;
-	bool anchor = ((flag & (1<<7))>>7) == 1;
+	bool granular = flag & (1<<6);
+	bool anchor = flag & (1<<7);
 #else
 	readU16();
 #endif
@@ -1004,8 +1013,8 @@ void WPG2Parser::handleBrushGradient()
 	m_gradientRef.insert("svg:cx", (double)xref);
 	m_gradientRef.insert("svg:cy", (double)yref);
 
-	WPG_DEBUG_MSG(("       Gradient angle : %d.%d\n", angleInteger, angleFraction));
-	WPG_DEBUG_MSG(("   Gradient reference : %d.%d\n", xref, yref));
+	WPG_DEBUG_MSG(("       Gradient angle : %d.%d\n", (int) angleInteger, (int) angleFraction));
+	WPG_DEBUG_MSG(("   Gradient reference : %d.%d\n", (int) xref, (int) yref));
 	WPG_DEBUG_MSG(("   Granular : %s\n", (granular ? "yes" : "no")));
 	WPG_DEBUG_MSG(("   Anchored : %s\n", (anchor ? "yes" : "no")));
 }
@@ -1014,7 +1023,7 @@ void WPG2Parser::handleDPBrushGradient()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -1027,8 +1036,8 @@ void WPG2Parser::handleDPBrushGradient()
 	unsigned yref = readU16();
 #ifdef DEBUG
 	unsigned flag = readU16();
-	bool granular = (flag & (1<<6)) == 1;
-	bool anchor = (flag & (1<<7)) == 1;
+	bool granular = flag & (1<<6);
+	bool anchor = flag & (1<<7);
 #else
 	readU16();
 #endif
@@ -1039,8 +1048,8 @@ void WPG2Parser::handleDPBrushGradient()
 	m_gradientRef.insert("svg:cx", (double)xref);
 	m_gradientRef.insert("svg:cy", (double)yref);
 
-	WPG_DEBUG_MSG(("       Gradient angle : %d.%d\n", angleInteger, angleFraction));
-	WPG_DEBUG_MSG(("   Gradient reference : %d.%d\n", xref, yref));
+	WPG_DEBUG_MSG(("       Gradient angle : %d.%d\n", (int) angleInteger, (int) angleFraction));
+	WPG_DEBUG_MSG(("   Gradient reference : %d.%d\n", (int) xref, (int) yref));
 	WPG_DEBUG_MSG(("   Granular : %s\n", (granular ? "yes" : "no")));
 	WPG_DEBUG_MSG(("   Anchored : %s\n", (anchor ? "yes" : "no")));
 }
@@ -1049,7 +1058,7 @@ void WPG2Parser::handleBrushForeColor()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -1059,7 +1068,7 @@ void WPG2Parser::handleBrushForeColor()
 	unsigned char gradientType = readU8();
 	WPG_DEBUG_MSG(("   Gradient type : %d (%s)\n", gradientType, describeGradient(gradientType)));
 
-	if(gradientType == 0)
+	if (gradientType == 0)
 	{
 		unsigned char red = readU8();
 		unsigned char green = readU8();
@@ -1070,9 +1079,9 @@ void WPG2Parser::handleBrushForeColor()
 		m_brushForeColor = libwpg::WPGColor(red, green, blue, alpha);
 
 		m_style.insert("draw:fill-color", m_brushForeColor.getColorString());
-		m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), WPX_PERCENT);
+		m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
-		if(!m_style["draw:fill"] || m_style["draw:fill"]->getStr() != "gradient")
+		if (!m_style["draw:fill"] || m_style["draw:fill"]->getStr() != "gradient")
 			m_style.insert("draw:fill", "solid");
 	}
 	else
@@ -1080,11 +1089,11 @@ void WPG2Parser::handleBrushForeColor()
 		unsigned count = readU16();
 		std::vector<libwpg::WPGColor> colors;
 		std::vector<double> positions;
-		WPG_DEBUG_MSG(("  Gradient colors : %d\n", count));
+		WPG_DEBUG_MSG(("  Gradient colors : %d\n", (int) count));
 
 		if (count > 0)
 		{
-			for(unsigned i = 0; i < count; i++)
+			for (unsigned i = 0; i < count; i++)
 			{
 				unsigned char red = readU8();
 				unsigned char green = readU8();
@@ -1095,41 +1104,41 @@ void WPG2Parser::handleBrushForeColor()
 				WPG_DEBUG_MSG(("   Color #%d (RGBA): %d %d %d %d\n", i+1, red, green, blue, alpha));
 			}
 
-			for(unsigned j = 0; j < count-1; j++)
+			for (unsigned j = 0; j < count-1; j++)
 			{
 				unsigned pos = readU16();
 				positions.push_back(TO_DOUBLE(pos));
-				WPG_DEBUG_MSG(("   Position #%d : %d\n", j+1, pos));
+				WPG_DEBUG_MSG(("   Position #%d : %d\n", j+1, (int) pos));
 			}
 		}
 
 		// looks like Corel Presentations only create 2 colors gradient
 		// and they are actually in reverse order
-		if(count == 2)
+		if (count == 2)
 		{
 			double xref = m_gradientRef["svg:cx"]->getDouble()/65536.0;
 			double yref = m_gradientRef["svg:cy"]->getDouble()/65536.0;
 			double angle = m_gradientAngle*M_PI/180.0;
 			double tanangle = tan(angle);
 			double ref = (tanangle < 1e2 && tanangle > -1e2) ? (yref+xref*tanangle)/(1+tanangle) : xref;
-			::WPXPropertyListVector gradient;
+			::librevenge::RVNGPropertyListVector gradient;
 			m_style.insert("draw:angle", (int)(-m_gradientAngle)); // upside down
-			WPXPropertyList propList;
-			propList.insert("svg:offset", 0.0, WPX_PERCENT);
+			librevenge::RVNGPropertyList propList;
+			propList.insert("svg:offset", 0.0, librevenge::RVNG_PERCENT);
 			propList.insert("svg:stop-color", colors[1].getColorString());
-			propList.insert("svg:stop-opacity", colors[1].getOpacity(), WPX_PERCENT);
+			propList.insert("svg:stop-opacity", colors[1].getOpacity(), librevenge::RVNG_PERCENT);
 			gradient.append(propList);
 			propList.clear();
-			propList.insert("svg:offset", ref, WPX_PERCENT);
+			propList.insert("svg:offset", ref, librevenge::RVNG_PERCENT);
 			propList.insert("svg:stop-color", colors[0].getColorString());
-			propList.insert("svg:stop-opacity", colors[0].getOpacity(), WPX_PERCENT);
+			propList.insert("svg:stop-opacity", colors[0].getOpacity(), librevenge::RVNG_PERCENT);
 			gradient.append(propList);
 			propList.clear();
-			if((m_gradientRef["svg:cx"]->getInt() != 65535) && (m_gradientRef["svg:cy"]->getInt() != 65535))
+			if ((m_gradientRef["svg:cx"]->getInt() != 65535) && (m_gradientRef["svg:cy"]->getInt() != 65535))
 			{
-				propList.insert("svg:offset", 1.0, WPX_PERCENT);
+				propList.insert("svg:offset", 1.0, librevenge::RVNG_PERCENT);
 				propList.insert("svg:stop-color", colors[1].getColorString());
-				propList.insert("svg:stop-opacity", colors[1].getOpacity(), WPX_PERCENT);
+				propList.insert("svg:stop-opacity", colors[1].getOpacity(), librevenge::RVNG_PERCENT);
 				gradient.append(propList);
 			}
 			m_gradient = gradient;
@@ -1142,7 +1151,7 @@ void WPG2Parser::handleDPBrushForeColor()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -1152,7 +1161,7 @@ void WPG2Parser::handleDPBrushForeColor()
 	unsigned char gradientType = readU8();
 	WPG_DEBUG_MSG(("   Gradient type : %d (%s)\n", gradientType, describeGradient(gradientType)));
 
-	if(gradientType == 0)
+	if (gradientType == 0)
 	{
 		unsigned char red = (m_doublePrecision)   ? readU16()>>8 : readU8();
 		unsigned char green = (m_doublePrecision)   ? readU16()>>8 : readU8();
@@ -1163,9 +1172,9 @@ void WPG2Parser::handleDPBrushForeColor()
 		m_brushForeColor = libwpg::WPGColor(red, green, blue, alpha);
 
 		m_style.insert("draw:fill-color", m_brushForeColor.getColorString());
-		m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), WPX_PERCENT);
+		m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
-		if(!m_style["draw:fill"] || m_style["draw:fill"]->getStr() != "none")
+		if (!m_style["draw:fill"] || m_style["draw:fill"]->getStr() != "none")
 			m_style.insert("draw:fill", "solid");
 	}
 	else
@@ -1173,11 +1182,11 @@ void WPG2Parser::handleDPBrushForeColor()
 		unsigned count = readU16();
 		std::vector<libwpg::WPGColor> colors;
 		std::vector<double> positions;
-		WPG_DEBUG_MSG(("  Gradient colors : %d\n", count));
+		WPG_DEBUG_MSG(("  Gradient colors : %d\n", (int) count));
 
 		if (count > 0)
 		{
-			for(unsigned i = 0; i < count; i++)
+			for (unsigned i = 0; i < count; i++)
 			{
 				unsigned char red = (m_doublePrecision)   ? readU16()>>8 : readU8();
 				unsigned char green = (m_doublePrecision)   ? readU16()>>8 : readU8();
@@ -1188,42 +1197,42 @@ void WPG2Parser::handleDPBrushForeColor()
 				WPG_DEBUG_MSG(("   Color #%d (RGBA): %d %d %d %d\n", i+1, red, green, blue, alpha));
 			}
 
-			for(unsigned j = 0; j < count-1; j++)
+			for (unsigned j = 0; j < count-1; j++)
 			{
 				unsigned pos = readU16();
 				positions.push_back(TO_DOUBLE(pos));
-				WPG_DEBUG_MSG(("   Position #%d : %d\n", j+1, pos));
+				WPG_DEBUG_MSG(("   Position #%d : %d\n", j+1, (int) pos));
 			}
 		}
 
 		// looks like Corel Presentations only create 2 colors gradient
 		// and they are actually in reverse order
-		if(count == 2)
+		if (count == 2)
 		{
 			double xref = m_gradientRef["svg:cx"]->getDouble()/65536.0;
 			double yref = m_gradientRef["svg:cy"]->getDouble()/65536.0;
 			double angle = m_gradientAngle*M_PI/180.0;
 			double tanangle = tan(angle);
 			double ref = (tanangle<1e2) ? (yref+xref*tanangle)/(1+tanangle) : xref;
-			::WPXPropertyListVector gradient;
+			::librevenge::RVNGPropertyListVector gradient;
 			m_style.insert("draw:angle", (int)(-m_gradientAngle));
 
-			WPXPropertyList propList;
-			propList.insert("svg:offset", 0.0, WPX_PERCENT);
+			librevenge::RVNGPropertyList propList;
+			propList.insert("svg:offset", 0.0, librevenge::RVNG_PERCENT);
 			propList.insert("svg:stop-color", colors[1].getColorString());
-			propList.insert("svg:stop-opacity", colors[1].getOpacity(), WPX_PERCENT);
+			propList.insert("svg:stop-opacity", colors[1].getOpacity(), librevenge::RVNG_PERCENT);
 			gradient.append(propList);
 			propList.clear();
-			propList.insert("svg:offset", ref, WPX_PERCENT);
+			propList.insert("svg:offset", ref, librevenge::RVNG_PERCENT);
 			propList.insert("svg:stop-color", colors[0].getColorString());
-			propList.insert("svg:stop-opacity", colors[0].getOpacity(), WPX_PERCENT);
+			propList.insert("svg:stop-opacity", colors[0].getOpacity(), librevenge::RVNG_PERCENT);
 			gradient.append(propList);
 			propList.clear();
-			if((m_gradientRef["svg:cx"]->getInt() != 65535) && (m_gradientRef["svg:cy"]->getInt() != 65535))
+			if ((m_gradientRef["svg:cx"]->getInt() != 65535) && (m_gradientRef["svg:cy"]->getInt() != 65535))
 			{
-				propList.insert("svg:offset", 1.0, WPX_PERCENT);
+				propList.insert("svg:offset", 1.0, librevenge::RVNG_PERCENT);
 				propList.insert("svg:stop-color", colors[1].getColorString());
-				propList.insert("svg:stop-opacity", colors[1].getOpacity(), WPX_PERCENT);
+				propList.insert("svg:stop-opacity", colors[1].getOpacity(), librevenge::RVNG_PERCENT);
 				gradient.append(propList);
 			}
 			m_gradient = gradient;
@@ -1247,7 +1256,7 @@ void WPG2Parser::handleBrushBackColor()
 	m_brushBackColor = libwpg::WPGColor(red, green, blue, alpha);
 
 	m_gradient.backColor = libwpg::WPGColor(red, green, blue, alpha);
-	if(m_gradient.style == libwpg::WPGGradient::NoBrush)
+	if (m_gradient.style == libwpg::WPGGradient::NoBrush)
 		m_gradient.style = libwpg::WPGGradient::Solid;
 
 	WPG_DEBUG_MSG(("   Backround color (RGBA): %d %d %d %d\n", red, green, blue, alpha));
@@ -1270,9 +1279,9 @@ void WPG2Parser::handleDPBrushBackColor()
 	m_brushBackColor = libwpg::WPGColor(red, green, blue, alpha);
 
 	m_style.insert("draw:fill-color", m_brushForeColor.getColorString());
-	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
-	if(m_style["draw:fill"] && m_style["draw:fill"]->getStr() == "none")
+	if (m_style["draw:fill"] && m_style["draw:fill"]->getStr() == "none")
 		m_style.insert("draw:fill", "solid");
 
 	WPG_DEBUG_MSG(("   Background color (RGBA): %d %d %d %d\n", red, green, blue, alpha));
@@ -1283,7 +1292,7 @@ void WPG2Parser::handleBrushPattern()
 {
 	if (!m_graphicsStarted)
 		return;
-	if(!m_groupStack.empty())
+	if (!m_groupStack.empty())
 	{
 		if (m_groupStack.top().isCompoundPolygon())
 			return;
@@ -1296,13 +1305,13 @@ void WPG2Parser::handleBrushPattern()
 
 	// TODO
 
-	WPG_DEBUG_MSG(("   Pattern : %d\n", pattern));
+	WPG_DEBUG_MSG(("   Pattern : %d\n", (int) pattern));
 }
 
 void WPG2Parser::parseCharacterization(ObjectCharacterization *ch)
 {
 	// sanity check
-	if(!ch) return;
+	if (!ch) return;
 
 	// identity
 	ch->matrix = WPG2TransformMatrix();
@@ -1320,15 +1329,15 @@ void WPG2Parser::parseCharacterization(ObjectCharacterization *ch)
 	ch->closed = (flags & (1<<14)) != 0;
 	ch->framed = (flags & (1<<15)) != 0;
 
-	if(ch->editLock) ch->lockFlags = readU32();
+	if (ch->editLock) ch->lockFlags = readU32();
 
 	// object ID can be 2 or 4 bytes
-	if(ch->hasObjectId) ch->objectId = readU16();
-	if(ch->objectId >> 15) ch->objectId = ((ch->objectId  & 0x7fff) << 16) | readU16();
+	if (ch->hasObjectId) ch->objectId = readU16();
+	if (ch->objectId >> 15) ch->objectId = ((ch->objectId  & 0x7fff) << 16) | readU16();
 
-	if(ch->rotate) ch->rotationAngle = fixedPointToDouble(readU32());
+	if (ch->rotate) ch->rotationAngle = fixedPointToDouble(readU32());
 
-	if(ch->rotate || ch->scale)
+	if (ch->rotate || ch->scale)
 	{
 		ch->sxcos = readS32();
 		ch->sycos = readS32();
@@ -1336,7 +1345,7 @@ void WPG2Parser::parseCharacterization(ObjectCharacterization *ch)
 		ch->matrix.element[1][1] = (double)(ch->sxcos)/65536;
 	}
 
-	if(ch->rotate || ch->skew)
+	if (ch->rotate || ch->skew)
 	{
 		ch->kxsin = readS32();
 		ch->kysin = readS32();
@@ -1344,7 +1353,7 @@ void WPG2Parser::parseCharacterization(ObjectCharacterization *ch)
 		ch->matrix.element[0][1] = (double)(ch->kysin)/65536;
 	}
 
-	if(ch->translate)
+	if (ch->translate)
 	{
 		ch->txfraction = readU16();
 		ch->txinteger = readS32();
@@ -1354,7 +1363,7 @@ void WPG2Parser::parseCharacterization(ObjectCharacterization *ch)
 		ch->matrix.element[2][1] = (double)(ch->tyinteger);
 	}
 
-	if(ch->taper)
+	if (ch->taper)
 	{
 		ch->px = readS32();
 		ch->py = readS32();
@@ -1374,10 +1383,10 @@ void WPG2Parser::parseCharacterization(ObjectCharacterization *ch)
 	WPG_DEBUG_MSG(("      framed : %s\n", (ch->framed ? "yes" : "no")));
 	WPG_DEBUG_MSG(("      filled : %s\n", (ch->filled ? "yes" : "no")));
 #ifdef DEBUG
-	if(ch->editLock) WPG_DEBUG_MSG(("  lock flags : 0x%x\n", (unsigned)ch->lockFlags));
-	if(ch->hasObjectId) WPG_DEBUG_MSG(("   object ID : 0x%x\n", (unsigned)ch->objectId));
-	if(ch->translate) WPG_DEBUG_MSG(("    tx : %li %d\n", ch->txinteger, ch->txfraction));
-	if(ch->translate) WPG_DEBUG_MSG(("    ty : %li %d\n", ch->tyinteger, ch->tyfraction));
+	if (ch->editLock) WPG_DEBUG_MSG(("  lock flags : 0x%x\n", (unsigned)ch->lockFlags));
+	if (ch->hasObjectId) WPG_DEBUG_MSG(("   object ID : 0x%x\n", (unsigned)ch->objectId));
+	if (ch->translate) WPG_DEBUG_MSG(("    tx : %li %d\n", ch->txinteger, ch->txfraction));
+	if (ch->translate) WPG_DEBUG_MSG(("    ty : %li %d\n", ch->tyinteger, ch->tyfraction));
 #endif
 	WPG_DEBUG_MSG(("transform matrix:\n"));
 	WPG_DEBUG_MSG(("%f %f %f\n", ch->matrix.element[0][0], ch->matrix.element[0][1],ch->matrix.element[0][2]));
@@ -1393,7 +1402,7 @@ void WPG2Parser::handlePolyline()
 	parseCharacterization(&objCh);
 	m_matrix = objCh.matrix;
 
-	WPXPropertyList tmpStyle = m_style;
+	librevenge::RVNGPropertyList tmpStyle = m_style;
 
 	if (!objCh.filled)
 		tmpStyle.insert("draw:fill", "none");
@@ -1404,16 +1413,15 @@ void WPG2Parser::handlePolyline()
 	                      m_groupStack.top().isCompoundPolygon();
 
 	// inside a compound, so take the parent transformation into account
-	if(insideCompound)
+	if (insideCompound)
 		m_matrix.transformBy(m_groupStack.top().compoundMatrix);
 
 	unsigned long count = readU16();
 
-	::WPXPropertyListVector points;
-	::WPXPropertyList point;
-	for(unsigned long i = 0; i < count; i++ )
+	::librevenge::RVNGPropertyListVector points;
+	for (unsigned long i = 0; i < count; i++)
 	{
-		point.clear();
+		::librevenge::RVNGPropertyList point;
 		long x = (m_doublePrecision) ? readS32() : readS16();
 		long y = (m_doublePrecision) ? readS32() : readS16();
 		TRANSFORM_XY(x,y);
@@ -1422,22 +1430,25 @@ void WPG2Parser::handlePolyline()
 		points.append(point);
 	}
 
-	if(insideCompound)
+	::librevenge::RVNGPropertyList tmpPoints;
+	tmpPoints.insert("svg:points", points);
+
+	if (insideCompound)
 	{
-		if(count > 0)
+		if (count > 0)
 		{
 			// inside a compound ? convert it into path because for compound
 			// we will only use paths
-			::WPXPropertyListVector &path = m_groupStack.top().compoundPath;
-			::WPXPropertyList element;
+			::librevenge::RVNGPropertyListVector &path = m_groupStack.top().compoundPath;
+			::librevenge::RVNGPropertyList element;
 			element = points[0];
-			element.insert("libwpg:path-action", "M");
+			element.insert("librevenge:path-action", "M");
 			path.append(element);
-			for(unsigned long ii = 1; ii < count; ii++)
+			for (unsigned long ii = 1; ii < count; ii++)
 			{
 				element.clear();
 				element = points[ii];
-				element.insert("libwpg:path-action", "L");
+				element.insert("librevenge:path-action", "L");
 				path.append(element);
 			}
 		}
@@ -1447,28 +1458,30 @@ void WPG2Parser::handlePolyline()
 		// otherwise draw directly
 		if (count > 2)
 		{
-			if(objCh.windingRule)
+			if (objCh.windingRule)
 				tmpStyle.insert("svg:fill-rule", "nonzero");
 			else
 				tmpStyle.insert("svg:fill-rule", "evenodd");
 
-			m_painter->setStyle( tmpStyle, objCh.filled ? m_gradient : ::WPXPropertyListVector() );
+			if (objCh.filled || m_gradient.count())
+				tmpStyle.insert("svg:linearGradient", m_gradient);
+			m_painter->setStyle(tmpStyle);
 
 			if (objCh.filled || objCh.closed)
-				m_painter->drawPolygon(points);
+				m_painter->drawPolygon(tmpPoints);
 			else
-				m_painter->drawPolyline(points);
+				m_painter->drawPolyline(tmpPoints);
 		}
 		else
 		{
 
-			m_painter->setStyle( tmpStyle, ::WPXPropertyListVector() );
-			m_painter->drawPolyline(points);
+			m_painter->setStyle(tmpStyle);
+			m_painter->drawPolyline(tmpPoints);
 		}
 	}
 
-	WPG_DEBUG_MSG(("   Vertices count : %li\n", count));
-	for(unsigned int j = 0; j < count; j++ )
+	WPG_DEBUG_MSG(("   Vertices count : %li\n", (long) count));
+	for (unsigned int j = 0; j < count; j++)
 		WPG_DEBUG_MSG(("        Point #%d : %g,%g\n", j+1, points[j]["svg:x"]->getDouble(), points[j]["svg:x"]->getDouble()));
 }
 
@@ -1493,7 +1506,7 @@ void WPG2Parser::handlePolycurve()
 	parseCharacterization(&objCh);
 	m_matrix = objCh.matrix;
 
-	WPXPropertyList tmpStyle = m_style;
+	librevenge::RVNGPropertyList tmpStyle = m_style;
 
 	if (!objCh.filled)
 		tmpStyle.insert("draw:fill", "none");
@@ -1504,16 +1517,16 @@ void WPG2Parser::handlePolycurve()
 	                      m_groupStack.top().isCompoundPolygon();
 
 	// inside a compound, so take the parent transformation into account
-	if(insideCompound)
+	if (insideCompound)
 		m_matrix.transformBy(m_groupStack.top().compoundMatrix);
 
 	unsigned int count = readU16();
 
-	::WPXPropertyListVector path;
-	::WPXPropertyList element;
-	::WPXPropertyListVector vertices;
-	::WPXPropertyListVector controlPoints;
-	for(unsigned int i = 0; i < count; i++ )
+	::librevenge::RVNGPropertyListVector path;
+	::librevenge::RVNGPropertyList element;
+	::librevenge::RVNGPropertyListVector vertices;
+	::librevenge::RVNGPropertyListVector controlPoints;
+	for (unsigned int i = 0; i < count; i++)
 	{
 		long ix = (m_doublePrecision) ? readS32() : readS16();
 		long iy = (m_doublePrecision) ? readS32() : readS16();
@@ -1530,12 +1543,12 @@ void WPG2Parser::handlePolycurve()
 		element.insert("svg:x", (TO_DOUBLE(ax)/m_xres));
 		element.insert("svg:y", (TO_DOUBLE(ay)/m_yres));
 		if (i == 0)
-			element.insert("libwpg:path-action", "M");
+			element.insert("librevenge:path-action", "M");
 		else
 		{
 			element.insert("svg:x2", (TO_DOUBLE(ix)/m_xres));
 			element.insert("svg:y2", (TO_DOUBLE(iy)/m_yres));
-			element.insert("libwpg:path-action", "C");
+			element.insert("librevenge:path-action", "C");
 		}
 		path.append(element);
 		element.insert("svg:x1", (TO_DOUBLE(tx)/m_xres));
@@ -1545,22 +1558,26 @@ void WPG2Parser::handlePolycurve()
 	element.clear();
 	if (objCh.closed)
 	{
-		element.insert("libwpg:path-action", "Z");
+		element.insert("librevenge:path-action", "Z");
 		path.append(element);
 	}
 
-	if(insideCompound)
+	if (insideCompound)
 		// inside a compound ? just collect the path together
 		m_groupStack.top().compoundPath.append(path);
 	else
 	{
 		// otherwise draw directly
-		if(objCh.windingRule)
+		if (objCh.windingRule)
 			tmpStyle.insert("svg:fill-rule", "nonzero");
 		else
 			tmpStyle.insert("svg:fill-rule", "evenodd");
-		m_painter->setStyle( tmpStyle, objCh.filled ? m_gradient : ::WPXPropertyListVector() );
-		m_painter->drawPath(path);
+		if (objCh.filled || m_gradient.count())
+			tmpStyle.insert("svg:linearGradient", m_gradient);
+		m_painter->setStyle(tmpStyle);
+		librevenge::RVNGPropertyList propList;
+		propList.insert("svg:d", path);
+		m_painter->drawPath(propList);
 	}
 }
 
@@ -1572,7 +1589,7 @@ void WPG2Parser::handleRectangle()
 	parseCharacterization(&objCh);
 	m_matrix = objCh.matrix;
 
-	WPXPropertyList tmpStyle = m_style;
+	librevenge::RVNGPropertyList tmpStyle = m_style;
 
 	if (!objCh.filled)
 		tmpStyle.insert("draw:fill", "none");
@@ -1595,7 +1612,7 @@ void WPG2Parser::handleRectangle()
 	long rx = (m_doublePrecision) ? readS32() : readS16();
 	long ry = (m_doublePrecision) ? readS32() : readS16();
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:x", (TO_DOUBLE(xs1) / m_xres));
 	propList.insert("svg:width", (TO_DOUBLE(xs2-xs1) / m_xres));
 	propList.insert("svg:y", (TO_DOUBLE(ys1) / m_yres));
@@ -1604,7 +1621,9 @@ void WPG2Parser::handleRectangle()
 	propList.insert("svg:rx", (TO_DOUBLE(rx)/m_xres));
 	propList.insert("svg:ry", (TO_DOUBLE(ry)/m_yres));
 
-	m_painter->setStyle( tmpStyle, objCh.filled ? m_gradient : ::WPXPropertyListVector() );
+	if (objCh.filled || m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
 	m_painter->drawRectangle(propList);
 
 	WPG_DEBUG_MSG(("      X1 : %li\n", x1));
@@ -1623,7 +1642,7 @@ void WPG2Parser::handleArc()
 	parseCharacterization(&objCh);
 	m_matrix = objCh.matrix;
 
-	WPXPropertyList tmpStyle = m_style;
+	librevenge::RVNGPropertyList tmpStyle = m_style;
 
 	if (!objCh.filled)
 		tmpStyle.insert("draw:fill", "none");
@@ -1650,41 +1669,45 @@ void WPG2Parser::handleArc()
 	TRANSFORM_XY(ix,iy);
 	TRANSFORM_XY(ex,ey);
 
-	m_painter->setStyle( tmpStyle, objCh.filled ? m_gradient : ::WPXPropertyListVector() );
+	if (objCh.filled || m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
 
 	if (ix == ex && iy == ey)
 	{
-		::WPXPropertyList propList;
+		::librevenge::RVNGPropertyList propList;
 		propList.insert("svg:cx", (TO_DOUBLE(cx) / m_xres));
 		propList.insert("svg:cy", (TO_DOUBLE(cy) / m_xres));
 		propList.insert("svg:rx", (TO_DOUBLE(radx) / m_xres));
 		propList.insert("svg:ry", (TO_DOUBLE(rady) / m_xres));
 		if (objCh.rotate)
-			propList.insert("libwpg:rotate", objCh.rotationAngle, WPX_GENERIC);
+			propList.insert("librevenge:rotate", objCh.rotationAngle, librevenge::RVNG_GENERIC);
 
 		m_painter->drawEllipse(propList);
 	}
 	else
 	{
-		::WPXPropertyList element;
-		::WPXPropertyListVector path;
+		::librevenge::RVNGPropertyList element;
+		::librevenge::RVNGPropertyListVector path;
 
-		element.insert("libwpg:path-action", "M");
+		element.insert("librevenge:path-action", "M");
 		element.insert("svg:x", (TO_DOUBLE(ix)/m_xres));
 		element.insert("svg:y", (TO_DOUBLE(iy)/m_yres));
 		path.append(element);
 		element.clear();
 
-		element.insert("libwpg:path-action", "A");
+		element.insert("librevenge:path-action", "A");
 		element.insert("svg:rx", (TO_DOUBLE(radx)/m_xres));
 		element.insert("svg:ry", (TO_DOUBLE(rady)/m_yres));
 		element.insert("svg:x", (TO_DOUBLE(ex)/m_xres));
 		element.insert("svg:y", (TO_DOUBLE(ey)/m_yres));
 		if (objCh.rotate)
-			element.insert("libwpg:rotate", objCh.rotationAngle, WPX_GENERIC);
+			element.insert("librevenge:rotate", objCh.rotationAngle, librevenge::RVNG_GENERIC);
 		path.append(element);
 
-		m_painter->drawPath(path);
+		librevenge::RVNGPropertyList propList;
+		propList.insert("svg:d", path);
+		m_painter->drawPath(propList);
 	}
 
 	WPG_DEBUG_MSG(("   Center point x : %li\n", cx));
@@ -1757,10 +1780,10 @@ void WPG2Parser::handleBitmapData()
 	unsigned compression_format = readU8();
 
 	WPG_DEBUG_MSG(("     dimension : %g, %g  %g, %g\n", m_bitmap.x1, m_bitmap.y1, m_bitmap.x2, m_bitmap.y2));
-	WPG_DEBUG_MSG(("         width : %i pixels\n", width));
-	WPG_DEBUG_MSG(("        height : %i pixels\n", height));
-	WPG_DEBUG_MSG(("  color format : %d\n", color_format));
-	WPG_DEBUG_MSG(("   compression : %d (%s)\n", compression_format,
+	WPG_DEBUG_MSG(("         width : %i pixels\n", (int) width));
+	WPG_DEBUG_MSG(("        height : %i pixels\n", (int) height));
+	WPG_DEBUG_MSG(("  color format : %d\n", (int) color_format));
+	WPG_DEBUG_MSG(("   compression : %d (%s)\n", (int) compression_format,
 	               (compression_format==0) ? "uncompressed":
 	               (compression_format==1) ? "run-length encoding" : "unknown"));
 
@@ -1801,11 +1824,11 @@ void WPG2Parser::handleBitmapData()
 	buffer.reserve(tmpBufferSize);
 
 	// plain data, uncompression
-	if(compression_format==0)
-		for(unsigned ii=0; ii < tmpBufferSize && !m_input->atEOS() && m_input->tell() <= m_recordEnd; ii++)
-			buffer.push_back( readU8() );
+	if (compression_format==0)
+		for (unsigned ii=0; ii < tmpBufferSize && !m_input->isEnd() && m_input->tell() <= m_recordEnd; ii++)
+			buffer.push_back(readU8());
 	// run-length encoding
-	else if(compression_format==1)
+	else if (compression_format==1)
 	{
 		unsigned char data[256];
 		bool xor_raster = false;
@@ -1815,14 +1838,14 @@ void WPG2Parser::handleBitmapData()
 		WPG_DEBUG_MSG(("Decoding RLE data\n"));
 
 		// FIXME check for ptr, it should not go out of bound!!
-		while (m_input->tell() <= m_recordEnd && !m_input->atEOS() && buffer.size() < tmpBufferSize)
+		while (m_input->tell() <= m_recordEnd && !m_input->isEnd() && buffer.size() < tmpBufferSize)
 		{
 			unsigned char opcode = readU8();
 			// specify data size
-			if(opcode == 0x7d)
+			if (opcode == 0x7d)
 			{
 				unsigned new_data_size = readU8();
-				if(new_data_size != data_size)
+				if (new_data_size != data_size)
 				{
 					data_size = new_data_size;
 					if (tmpBufferSize < data_size*width*height)
@@ -1835,51 +1858,51 @@ void WPG2Parser::handleBitmapData()
 			}
 
 			// a run of black (index #0)
-			else if(opcode == 0x7f)
+			else if (opcode == 0x7f)
 			{
 				unsigned count = 1 + readU8();
-				for( ; count ; --count )
-					for(unsigned j = 0; j < data_size && !m_input->atEOS(); j++)
-						buffer.push_back( 0 );
+				for (; count ; --count)
+					for (unsigned j = 0; j < data_size && !m_input->isEnd(); j++)
+						buffer.push_back(0);
 
 			}
 
 			// a run of white (index #255)
-			else if(opcode == 0xff)
+			else if (opcode == 0xff)
 			{
 				unsigned count = 1 + readU8();
 
-				for( ; count ; --count )
-					for(unsigned j = 0; j < data_size && !m_input->atEOS(); j++)
-						buffer.push_back( 255 );
+				for (; count ; --count)
+					for (unsigned j = 0; j < data_size && !m_input->isEnd(); j++)
+						buffer.push_back(255);
 			}
 
 			// extend previous run
-			else if(opcode == 0xfd)
+			else if (opcode == 0xfd)
 			{
 				unsigned count = 1 + readU8();
-				for( ; count; --count)
-					for(unsigned j = 0; j < data_size && !m_input->atEOS(); j++)
-						buffer.push_back( data[j] );
+				for (; count; --count)
+					for (unsigned j = 0; j < data_size && !m_input->isEnd(); j++)
+						buffer.push_back(data[j]);
 			}
 
 			// repeat raster
-			else if(opcode == 0xfe)
+			else if (opcode == 0xfe)
 			{
 				unsigned count = 1 + readU8();
-				if ( buffer.size() < raster_len )
+				if (buffer.size() < raster_len)
 					break;
 				unsigned raster_source = buffer.size() - raster_len;
-				for( ; count; --count)
-					for(unsigned long r = 0; r < raster_len; r++)
+				for (; count; --count)
+					for (unsigned long r = 0; r < raster_len; r++)
 					{
 						unsigned char pixel = buffer[raster_source + r];
-						buffer.push_back( pixel );
+						buffer.push_back(pixel);
 					}
 			}
 
 			// XOR
-			else if(opcode == 0x7e)
+			else if (opcode == 0x7e)
 			{
 				// Xor-ing will happen when about to enter next raster
 				// see after the last if down below
@@ -1890,23 +1913,23 @@ void WPG2Parser::handleBitmapData()
 			// NOTE: the following two IFs here must be the last ones
 
 			// a run of data
-			else if(opcode >= 0x80)
+			else if (opcode >= 0x80)
 			{
 				unsigned count = 1 + (opcode & 0x7f);
-				for(unsigned i = 0; i < data_size && !m_input->atEOS(); i++)
+				for (unsigned i = 0; i < data_size && !m_input->isEnd(); i++)
 					data[i] = readU8();
-				for( ; count; --count)
-					for(unsigned j = 0; j < data_size; j++)
-						buffer.push_back( data[j] );
+				for (; count; --count)
+					for (unsigned j = 0; j < data_size; j++)
+						buffer.push_back(data[j]);
 			}
 
 			// simple copy
-			else if(opcode <= 0x7f)
+			else if (opcode <= 0x7f)
 			{
 				unsigned count = opcode + 1;
-				for( ; count; --count)
-					for(unsigned j = 0; j < data_size && !m_input->atEOS(); j++)
-						buffer.push_back( readU8() );
+				for (; count; --count)
+					for (unsigned j = 0; j < data_size && !m_input->isEnd(); j++)
+						buffer.push_back(readU8());
 			}
 
 			// unreachable: only sentinel
@@ -1917,7 +1940,7 @@ void WPG2Parser::handleBitmapData()
 			}
 
 			// new raster/scanline? if necessary do the XOR now
-			if(xor_raster && buffer.size() >= next_scanline)
+			if (xor_raster && buffer.size() >= next_scanline)
 			{
 				// reset, because XOR in one raster at a time
 				xor_raster = false;
@@ -1927,7 +1950,7 @@ void WPG2Parser::handleBitmapData()
 				unsigned previous = current - raster_len;
 				if (current >= buffer.size() || previous >= buffer.size())
 					return;
-				for( unsigned r = 0; r < raster_len; r++)
+				for (unsigned r = 0; r < raster_len; r++)
 					buffer[current++] ^= buffer[previous++];
 
 			}
@@ -1938,52 +1961,54 @@ void WPG2Parser::handleBitmapData()
 	}
 
 	// no buffer? format is unknown
-	if(!buffer.size()) return;
+	if (!buffer.size()) return;
 
 	while (buffer.size() < tmpBufferSize)
 		buffer.push_back(0);
 
 	// prepare the bitmap structure for the listener
-	libwpg::WPGBitmap bitmap(width, height, m_vFlipped, m_hFlipped);
-	::WPXPropertyList propList;
+	libwpg::WPGBitmap bitmap((int) width, (int) height, m_vFlipped, m_hFlipped);
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:x", (double)m_bitmap.x1);
 	propList.insert("svg:y", (double)m_bitmap.y1);
 	propList.insert("svg:width", (m_bitmap.x2 - m_bitmap.x1));
 	propList.insert("svg:height", (m_bitmap.y2 - m_bitmap.y1));
-	propList.insert("libwpg:mime-type", "image/bmp");
+	propList.insert("librevenge:mime-type", "image/bmp");
 
 	// format 1: each byte represents 8 pixels, the color fetched from the palette
-	if(color_format == 1)
+	if (color_format == 1)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 				if ((x==0) && (i % 8 != 0))
 					i = (i/8 + 1) * 8;
 				unsigned index = ((buffer[i/8] & (0x01 << (7 - (i % 8)))) >> (7 - (i % 8)));
-				const libwpg::WPGColor &color = m_colorPalette[index];
-				bitmap.setPixel(x, y, color);
+				const libwpg::WPGColor &color = m_colorPalette[(int) index];
+				bitmap.setPixel((int) x, (int) y, color);
 			}
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	// format 2: each byte represents 4 pixels, the color fetched from the palette
-	else if(color_format == 2)
+	else if (color_format == 2)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 				if ((x==0) && (i % 4 != 0))
 					i = (i/4 + 1) * 4;
 				unsigned index = ((buffer[i/4] & (0x03 << 2*(3 - (i % 4)))) >> 2*(3 - (i % 4)));
-				const libwpg::WPGColor &color = m_colorPalette[index];
-				bitmap.setPixel(x, y, color);
+				const libwpg::WPGColor &color = m_colorPalette[(int) index];
+				bitmap.setPixel((int) x, (int) y, color);
 			}
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	// format 3: each byte represents 2 pixels, the color fetched from the palette
-	else if(color_format == 3)
+	else if (color_format == 3)
 	{
 		int i = 0;
 		for (unsigned long y = 0; y < height; y++)
@@ -1991,103 +2016,111 @@ void WPG2Parser::handleBitmapData()
 			{
 				if ((x==0) && (i % 2 != 0))
 					i = (i/2 + 1) * 2;
-				unsigned index = ((buffer[i/2] & (0x0f << 4*(1 - (i % 2)))) >> 4*(1 - (i % 2)));
-				const libwpg::WPGColor &color = m_colorPalette[index];
-				bitmap.setPixel(x, y, color);
+				unsigned index = ((buffer[size_t(i/2)] & (0x0f << 4*(1 - (i % 2)))) >> 4*(1 - (i % 2)));
+				const libwpg::WPGColor &color = m_colorPalette[(int) index];
+				bitmap.setPixel((int) x, (int) y, color);
 			}
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	// format 4: each byte represents a pixel, the color fetched from the palette
-	else if(color_format == 4)
+	else if (color_format == 4)
 	{
-		int i = 0;
-		for(unsigned long y = 0; y < height; y++)
-			for(unsigned long x = 0; x < width; x++, i++)
+		size_t i = 0;
+		for (unsigned long y = 0; y < height; y++)
+			for (unsigned long x = 0; x < width; x++, i++)
 			{
 				const libwpg::WPGColor &color = m_colorPalette[buffer[i]];
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	// format 5: greyscale of 16 bits
 	else if (color_format == 5)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 
 				const libwpg::WPGColor color(buffer[2*i+1], buffer[2*i+1], buffer[2*i+1]);
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	// format 6: RGB, with 5 bits per colour
 	else if (color_format == 6)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 				unsigned short tmpColor = (unsigned short)(buffer[2*i] | (buffer[2*i+1] << 8));
 				const libwpg::WPGColor color((tmpColor >> 10) & 0x1f, (tmpColor >> 5) & 0x1f, tmpColor & 0x1f);
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	// format 7:
 	else if (color_format == 7)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 				unsigned short tmpColor = (unsigned short)(buffer[2*i] | (buffer[2*i+1] << 8));
 				const libwpg::WPGColor color(tmpColor & 0x0f, (tmpColor >> 4) & 0x0f, (tmpColor >> 8) & 0x0f, (tmpColor >> 12) & 0x0f);
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	else if (color_format == 8)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 				const libwpg::WPGColor color(buffer[3*i+2] & 0xff, buffer[3*i+1] & 0xff, buffer[3*i] & 0xff);
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	else if (color_format == 9)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 				const libwpg::WPGColor color(buffer[4*i+3], buffer[4*i+2] & 0xff, buffer[4*i+1] & 0xff, buffer[4*i] & 0xff);
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 	else if (color_format == 12)
 	{
-		int i = 0;
+		size_t i = 0;
 		for (unsigned long y = 0; y < height; y++)
 			for (unsigned long x = 0; x < width; x++, i++)
 			{
 
 				const libwpg::WPGColor color(buffer[i], buffer[i], buffer[i]);
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 
 }
@@ -2165,12 +2198,12 @@ void WPG2Parser::handleObjectCapsule()
 		"image/gif" // 0x26
 	};
 
-	for (unsigned long i = 0; m_input->tell() <= m_recordEnd && !m_input->atEOS() && i < numDescriptions; i++)
+	for (unsigned long i = 0; m_input->tell() <= m_recordEnd && !m_input->isEnd() && i < numDescriptions; i++)
 	{
 		unsigned char description = readU8();
 		if (description < 0x27)
-			m_binaryData.mimeTypes.push_back(WPXString(mimeTypesMap[description]));
-		m_input->seek(7, WPX_SEEK_CUR);
+			m_binaryData.mimeTypes.push_back(librevenge::RVNGString(mimeTypesMap[description]));
+		m_input->seek(7, librevenge::RVNG_SEEK_CUR);
 	}
 
 	m_binaryData.objectIndex = 0;
@@ -2179,7 +2212,7 @@ void WPG2Parser::handleObjectCapsule()
 	WPG_DEBUG_MSG(("             y1 : %li\n", y1));
 	WPG_DEBUG_MSG(("             x2 : %li\n", x2));
 	WPG_DEBUG_MSG(("             y2 : %li\n", y2));
-	WPG_DEBUG_MSG(("numDescriptions : %li\n", numDescriptions));
+	WPG_DEBUG_MSG(("numDescriptions : %li\n", (long) numDescriptions));
 }
 
 void WPG2Parser::handleObjectImage()
@@ -2189,20 +2222,20 @@ void WPG2Parser::handleObjectImage()
 	if ((unsigned long)m_binaryData.objectIndex >= m_binaryData.mimeTypes.size())
 		return;
 	unsigned accessoryDataLength = readU16();
-	m_input->seek(accessoryDataLength, WPX_SEEK_CUR);
+	m_input->seek((long) accessoryDataLength, librevenge::RVNG_SEEK_CUR);
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:x", (double)m_binaryData.x1);
 	propList.insert("svg:y", (double)m_binaryData.y1);
 	propList.insert("svg:width", (m_binaryData.x2 - m_binaryData.x1));
 	propList.insert("svg:height", (m_binaryData.y2 - m_binaryData.y1));
-	propList.insert("libwpg:mime-type", m_binaryData.mimeTypes[m_binaryData.objectIndex]);
+	propList.insert("librevenge:mime-type", m_binaryData.mimeTypes[(size_t) m_binaryData.objectIndex]);
 
-	WPG_DEBUG_MSG(("Image Object Mime Type : %s\n", propList["libwpg:mime-type"]->getStr().cstr()));
+	WPG_DEBUG_MSG(("Image Object Mime Type : %s\n", propList["librevenge:mime-type"]->getStr().cstr()));
 
-	::WPXBinaryData binaryData;
-	while (!m_input->atEOS() && m_input->tell() <= m_recordEnd)
-		binaryData.append((char)readU8());
+	::librevenge::RVNGBinaryData binaryData;
+	while (!m_input->isEnd() && m_input->tell() <= m_recordEnd)
+		binaryData.append((unsigned char)readU8());
 	WPG_DEBUG_MSG(("     Image Object Size : %li\n", (unsigned long)binaryData.size()));
 
 	// temporary for debug - dump the binary data (need to have write access in the current directory
@@ -2221,7 +2254,8 @@ void WPG2Parser::handleObjectImage()
 #endif
 
 
-	m_painter->drawGraphicObject(propList, binaryData);
+	propList.insert("office:binary-data", binaryData);
+	m_painter->drawGraphicObject(propList);
 	m_binaryData.objectIndex++;
 }
 
@@ -2314,23 +2348,24 @@ void WPG2Parser::handleTextData()
 	if (!m_drawTextData)
 		return;
 
-	::WPXBinaryData textData;
-	while (!m_input->atEOS() && m_input->tell() <= m_recordEnd)
-		textData.append((char)readU8());
+	::librevenge::RVNGBinaryData textData;
+	while (!m_input->isEnd() && m_input->tell() <= m_recordEnd)
+		textData.append((unsigned char)readU8());
 	WPGTextDataHandler handler(m_painter);
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 
 	propList.insert("svg:x", (double)m_textData.x1);
 	propList.insert("svg:y", (double)m_textData.y1);
-	if (m_textData.x1 != m_textData.x2 && m_textData.y1 != m_textData.y2)
+	if ((m_textData.x1 < m_textData.x2 || m_textData.x1 > m_textData.x2) &&
+	        (m_textData.y1 < m_textData.y2 || m_textData.y1 > m_textData.y2))
 	{
 		propList.insert("svg:width", (m_textData.x2 - m_textData.x1));
 		propList.insert("svg:height", (m_textData.y2 - m_textData.y1));
 	}
 
-	m_painter->startTextObject(propList, ::WPXPropertyListVector());
+	m_painter->startTextObject(propList);
 
-	WPDocument::parseSubDocument(const_cast<WPXInputStream *>(textData.getDataStream()), &handler, WPD_FILE_FORMAT_WP6);
+	WPDocument::parseSubDocument(const_cast<librevenge::RVNGInputStream *>(textData.getDataStream()), &handler, WPD_FILE_FORMAT_WP6);
 
 	m_painter->endTextObject();
 

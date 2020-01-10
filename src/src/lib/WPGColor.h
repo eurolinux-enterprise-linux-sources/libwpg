@@ -26,7 +26,7 @@
 #ifndef __WPGCOLOR_H__
 #define __WPGCOLOR_H__
 
-#include <libwpd/libwpd.h>
+#include <librevenge/librevenge.h>
 
 namespace libwpg
 {
@@ -46,7 +46,7 @@ public:
 
 	WPGColor &operator=(const WPGColor &color);
 
-	const ::WPXString getColorString() const;
+	const ::librevenge::RVNGString getColorString() const;
 
 	double getOpacity() const;
 };

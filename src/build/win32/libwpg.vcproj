@@ -41,7 +41,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="$(LIBWPD_INCLUDES)"
+				AdditionalIncludeDirectories="..\..\inc,$(LIBREVENGE_INCLUDES)"
 				PreprocessorDefinitions="NDEBUG;WIN32;_LIB;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -115,7 +115,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="$(LIBWPD_INCLUDES)"
+				AdditionalIncludeDirectories="..\..\inc,$(LIBREVENGE_INCLUDES)"
 				PreprocessorDefinitions="_DEBUG;DEBUG;WIN32;_LIB;_CRT_SECURE_NO_WARNINGS"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -332,6 +332,26 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\src\lib\WPGStringVector.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\..\src\lib\WPGSVGGenerator.cpp"
 				>
 				<FileConfiguration
@@ -377,7 +397,15 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
-				RelativePath="..\..\src\lib\libwpg.h"
+				RelativePath="..\..\inc\libwpg\libwpg.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\inc\libwpg\WPGraphics.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\inc\libwpg\WPGPaintInterface.h"
 				>
 			</File>
 			<File
@@ -413,11 +441,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\lib\WPGPaintInterface.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\lib\WPGraphics.h"
+				RelativePath="..\..\src\lib\WPGStringVector.h"
 				>
 			</File>
 			<File

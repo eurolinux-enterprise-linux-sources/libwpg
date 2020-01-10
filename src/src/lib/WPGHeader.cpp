@@ -29,13 +29,13 @@
 
 namespace
 {
-static inline unsigned short readU16( const void *p )
+static inline unsigned short readU16(const void *p)
 {
 	const unsigned char *ptr = (const unsigned char *) p;
 	return (unsigned short)(ptr[0]+(ptr[1]<<8));
 }
 
-static inline unsigned long readU32( const void *p )
+static inline unsigned long readU32(const void *p)
 {
 	const unsigned char *ptr = (const unsigned char *) p;
 	return (unsigned long)(unsigned)(ptr[0]+(ptr[1]<<8)+(ptr[2]<<16)+(ptr[3]<<24));
@@ -58,13 +58,13 @@ WPGHeader::WPGHeader() :
 	m_identifier[3] = 'C';
 }
 
-bool WPGHeader::load(WPXInputStream *input)
+bool WPGHeader::load(librevenge::RVNGInputStream *input)
 {
-//	input->seek(0, WPX_SEEK_SET);
+//	input->seek(0, librevenge::RVNG_SEEK_SET);
 
 	unsigned long n = 0;
-	unsigned char *prefix = (unsigned char *) input->read(26, n);
-	if(n < 26)
+	unsigned char const *prefix = input->read(26, n);
+	if (n < 26)
 		return false;
 
 	m_identifier[0] = prefix[0];

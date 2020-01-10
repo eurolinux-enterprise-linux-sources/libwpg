@@ -27,14 +27,14 @@
 #ifndef __WPGHEADER_H__
 #define __WPGHEADER_H__
 
-#include <libwpd-stream/WPXStream.h>
+#include <librevenge-stream/librevenge-stream.h>
 
 class WPGHeader
 {
 public:
 	WPGHeader();
 
-	bool load(WPXInputStream *input);
+	bool load(librevenge::RVNGInputStream *input);
 
 	bool isSupported() const;
 

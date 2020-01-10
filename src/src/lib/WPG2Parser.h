@@ -31,7 +31,7 @@
 #include "WPGXParser.h"
 #include "WPGDashArray.h"
 #include "WPGBitmap.h"
-#include <libwpd/libwpd.h>
+#include <librevenge/librevenge.h>
 
 #include <map>
 #include <stack>
@@ -60,17 +60,17 @@ public:
 		y = ry;
 	}
 
-	::WPXPropertyList transformPoint(const ::WPXPropertyList &p) const
+	::librevenge::RVNGPropertyList transformPoint(const ::librevenge::RVNGPropertyList &p) const
 	{
-		::WPXPropertyList propList;
+		::librevenge::RVNGPropertyList propList;
 		propList.insert("svg:x", (element[0][0]*p["svg:x"]->getDouble() + element[1][0]*p["svg:y"]->getDouble() + element[2][0]));
 		propList.insert("svg:y", (element[0][1]*p["svg:x"]->getDouble() + element[1][1]*p["svg:y"]->getDouble() + element[2][1]));
 		return propList;
 	}
 
-	::WPXPropertyList transformRect(const ::WPXPropertyList &r) const
+	::librevenge::RVNGPropertyList transformRect(const ::librevenge::RVNGPropertyList &r) const
 	{
-		::WPXPropertyList propList;
+		::librevenge::RVNGPropertyList propList;
 		double oldx1 = r["svg:x"]->getDouble();
 		double oldy1 = r["svg:y"]->getDouble();
 		double oldx2 = r["svg:x"]->getDouble() + r["svg:width"]->getDouble();
@@ -92,16 +92,16 @@ public:
 	{
 		double result[3][3];
 
-		for(int i = 0; i < 3; i++)
-			for(int j = 0; j < 3; j++)
+		for (int i = 0; i < 3; i++)
+			for (int j = 0; j < 3; j++)
 			{
 				result[i][j] = 0;
-				for(int k = 0; k < 3; k++)
+				for (int k = 0; k < 3; k++)
 					result[i][j] += m.element[i][k]*element[k][j];
 			}
 
-		for(int x = 0; x < 3; x++)
-			for(int y = 0; y < 3; y++)
+		for (int x = 0; x < 3; x++)
+			for (int y = 0; y < 3; y++)
 				element[x][y] = result[x][y];
 
 		return *this;
@@ -124,7 +124,7 @@ class WPGGroupContext
 public:
 	unsigned subIndex;
 	int parentType;
-	::WPXPropertyListVector compoundPath;
+	::librevenge::RVNGPropertyListVector compoundPath;
 	WPG2TransformMatrix compoundMatrix;
 	bool compoundWindingRule;
 	bool compoundFilled;
@@ -154,7 +154,7 @@ class WPGBinaryDataContext
 public:
 	double x1, y1, x2, y2;
 	int numObjects, objectIndex;
-	std::vector<WPXString> mimeTypes;
+	std::vector<librevenge::RVNGString> mimeTypes;
 	WPGBinaryDataContext(): x1(0), y1(0), x2(0), y2(0), numObjects(0), objectIndex(0), mimeTypes() {}
 };
 
@@ -172,7 +172,7 @@ public:
 class WPG2Parser : public WPGXParser
 {
 public:
-	WPG2Parser(WPXInputStream *input, libwpg::WPGPaintInterface *painter, bool isEmbedded = false);
+	WPG2Parser(librevenge::RVNGInputStream *input, librevenge::RVNGDrawingInterface *painter, bool isEmbedded = false);
 	bool parse();
 
 private:
@@ -237,13 +237,13 @@ private:
 	long m_width;
 	long m_height;
 	bool m_doublePrecision;
-	::WPXPropertyList m_style;
+	::librevenge::RVNGPropertyList m_style;
 	libwpg::WPGColor m_penForeColor;
 	libwpg::WPGColor m_penBackColor;
 	libwpg::WPGColor m_brushForeColor;
 	libwpg::WPGColor m_brushBackColor;
 	libwpg::WPGDashArray m_dashArray;
-	::WPXPropertyListVector m_gradient;
+	::librevenge::RVNGPropertyListVector m_gradient;
 	std::map<unsigned int,libwpg::WPGDashArray> m_dashArrayStyles;
 	bool m_layerOpened;
 #ifdef DEBUG
@@ -251,7 +251,7 @@ private:
 #endif
 	WPG2TransformMatrix m_matrix;
 	double m_gradientAngle;
-	::WPXPropertyList m_gradientRef;
+	::librevenge::RVNGPropertyList m_gradientRef;
 	std::stack<WPGGroupContext> m_groupStack;
 	WPG2TransformMatrix m_compoundMatrix;
 	bool m_compoundWindingRule;

@@ -6,8 +6,8 @@ AC_PREREQ([2.65])
 # Version informations
 # ====================
 m4_define([libwpg_version_major],[0])
-m4_define([libwpg_version_minor],[2])
-m4_define([libwpg_version_micro],[2])
+m4_define([libwpg_version_minor],[3])
+m4_define([libwpg_version_micro],[0])
 m4_define([libwpg_version],[libwpg_version_major.libwpg_version_minor.libwpg_version_micro])
 
 # =============
@@ -30,16 +30,47 @@ AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-AC_PROG_LIBTOOL
-AC_LIBTOOL_WIN32_DLL
+LT_INIT([win32-dll disable-static pic-only])
+AC_CANONICAL_HOST
+
 PKG_PROG_PKG_CONFIG([0.20])
 
-# ====================
-# Find additional apps
-# ====================
+# ===============
+# Find librevenge
+# ===============
+PKG_CHECK_MODULES([REVENGE],[
+	librevenge-0.0
+])
+AC_SUBST([REVENGE_CFLAGS])
+AC_SUBST([REVENGE_LIBS])
+
+# =====
+# Tools
+# =====
+AC_ARG_ENABLE([tools],
+	[AS_HELP_STRING([--disable-tools], [Build conversion tools])],
+	[enable_tools="$enableval"],
+	[enable_tools=yes]
+)
+AS_IF([test "x$enable_tools" = "xyes"], [
+	PKG_CHECK_MODULES([REVENGE_GENERATORS],[
+		librevenge-generators-0.0
+	])
+	PKG_CHECK_MODULES([REVENGE_STREAM],[
+		librevenge-stream-0.0
+	])
+])
+AC_SUBST([REVENGE_GENERATORS_CFLAGS])
+AC_SUBST([REVENGE_GENERATORS_LIBS])
+AC_SUBST([REVENGE_STREAM_CFLAGS])
+AC_SUBST([REVENGE_STREAM_LIBS])
+AM_CONDITIONAL(BUILD_TOOLS, [test "x$enable_tools" = "xyes"])
+
+# ===========
+# Find libwpd
+# ===========
 PKG_CHECK_MODULES([WPD],[
-	libwpd-0.9
-	libwpd-stream-0.9
+	libwpd-0.10
 ])
 AC_SUBST(WPD_LIBS)
 AC_SUBST(WPD_CFLAGS)
@@ -134,12 +165,12 @@ AS_IF([test "x$native_win32" = "xyes"], [
 			AC_MSG_WARN([produced libraries might be incompatible with MSVC-compiled code])
 		])
 	])
-	CFLAGS="$CFLAGS -Wall -pedantic"
-	CXXFLAGS="$CXXFLAGS -Wall -pedantic"
+	CFLAGS="$CFLAGS -Wall -Wextra -pedantic"
+	CXXFLAGS="$CXXFLAGS -Wall -Wextra -Wshadow -pedantic"
 ], [
 	AS_IF([test x"$GCC" = xyes], [
 		# Be tough with warnings and produce less careless code
-		CFLAGS="$CFLAGS -Wall -pedantic"
+		CFLAGS="$CFLAGS -Wall -Wextra -pedantic"
 		CXXFLAGS="$CXXFLAGS -Wall -Wextra -pedantic -Wshadow -Wunused-variable"
 		AS_IF([test x"$enable_weffc" != "xno"], [
 			CXXFLAGS="$CXXFLAGS -Weffc++"
@@ -179,21 +210,6 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 	DEBUG_CXXFLAGS="-DNDEBUG"
 ])
 AC_SUBST(DEBUG_CXXFLAGS)
-
-# ============
-# Static tools
-# ============
-AC_ARG_ENABLE([static-tools],
-	[AS_HELP_STRING([--enable-static-tools], [Link tools (binaries) statically])],
-	[enable_static_tools="$enableval"],
-	[enable_static_tools=no]
-)
-AS_IF([test "x$enable_static_tools" = "xyes"], [
-	enable_static="yes"
-], [
-	AC_DISABLE_STATIC
-])
-AM_CONDITIONAL(STATIC_TOOLS, [test "x$enable_static_tools" = "xyes"])
 
 # =============
 # Dummy bitmaps
@@ -236,13 +252,14 @@ src/conv/raw/wpg2raw.rc
 src/conv/svg/Makefile
 src/conv/svg/wpg2svg.rc
 src/lib/Makefile
-src/lib/libwpg.h
 src/lib/libwpg.rc
+inc/Makefile
+inc/libwpg/Makefile
 build/Makefile
 build/win32/Makefile
 docs/Makefile
 docs/doxygen/Makefile
-libwpg-0.2.pc
+libwpg-$WPG_MAJOR_VERSION.$WPG_MINOR_VERSION.pc:libwpg.pc.in
 libwpg.spec
 libwpg-zip
 ])
@@ -257,7 +274,7 @@ Build configuration:
 	debug:           ${enable_debug}
 	docs:            ${build_docs}
 	dummy-bitmaps:   ${with_dummy_bitmaps}
-	static-tools:    ${enable_static_tools}
+	tools:           ${enable_tools}
 	werror:          ${enable_werror}
 ==============================================================================
 ])

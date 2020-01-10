@@ -28,7 +28,7 @@
 #define __WPGBITMAP_H__
 
 #include "WPGColor.h"
-#include <libwpd/libwpd.h>
+#include <librevenge/librevenge.h>
 
 namespace libwpg
 {
@@ -60,7 +60,7 @@ public:
 
 	void setPixel(int x, int y, const WPGColor &color);
 
-	const ::WPXBinaryData &getDIB() const;
+	const ::librevenge::RVNGBinaryData &getDIB() const;
 
 private:
 	class Private;

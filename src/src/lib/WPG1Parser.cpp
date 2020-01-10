@@ -25,11 +25,10 @@
  * Corel Corporation or Corel Corporation Limited."
  */
 
+#include <librevenge/librevenge.h>
+#include <libwpg/libwpg.h>
 #include "WPG1Parser.h"
-#include "WPGPaintInterface.h"
 #include "libwpg_utils.h"
-#include <libwpd/libwpd.h>
-#include <libwpd/WPXPropertyList.h>
 
 static const unsigned char defaultWPG1PaletteRed[] =
 {
@@ -140,7 +139,7 @@ static const unsigned char defaultWPG1PaletteBlue[] =
 };
 
 
-WPG1Parser::WPG1Parser(WPXInputStream *input, libwpg::WPGPaintInterface *painter):
+WPG1Parser::WPG1Parser(librevenge::RVNGInputStream *input, librevenge::RVNGDrawingInterface *painter):
 	WPGXParser(input, painter),
 	m_recordLength(0), m_recordEnd(0),
 	m_success(true), m_exit(false), m_graphicsStarted(false),
@@ -153,9 +152,9 @@ WPG1Parser::WPG1Parser(WPXInputStream *input, libwpg::WPGPaintInterface *painter
 {
 	m_style.insert("draw:fill", "solid");
 	m_style.insert("svg:stroke-color", m_penForeColor.getColorString());
-	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 	m_style.insert("draw:fill-color", m_brushForeColor.getColorString());
-	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 }
 
 bool WPG1Parser::parse()
@@ -217,12 +216,12 @@ bool WPG1Parser::parse()
 	m_brushForeColor = libwpg::WPGColor(0,0,0);
 	m_brushBackColor = libwpg::WPGColor(0,0,0);
 	m_style.insert("svg:stroke-color", m_penForeColor.getColorString());
-	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 	m_style.insert("draw:fill-color", m_brushForeColor.getColorString());
-	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 	resetPalette();
 
-	while(!m_input->atEOS())
+	while (!m_input->isEnd())
 	{
 #ifdef DEBUG
 		long recordPos = m_input->tell();
@@ -230,23 +229,23 @@ bool WPG1Parser::parse()
 		int recordType = readU8();
 		if (recordType == 0)
 			break;
-		m_recordLength = readVariableLengthInteger();
+		m_recordLength = (int) readVariableLengthInteger();
 		m_recordEnd = m_input->tell() + m_recordLength - 1;
 
 		// search function to handler this record
 		int index = -1;
-		for(int i = 0; (index < 0) && handlers[i].name; i++)
-			if(handlers[i].type == recordType)
+		for (int i = 0; (index < 0) && handlers[i].name; i++)
+			if (handlers[i].type == recordType)
 				index = i;
 
 		WPG_DEBUG_MSG(("\n"));
-		if(index < 0)
+		if (index < 0)
 			WPG_DEBUG_MSG(("Unknown record type 0x%02x at %li  size %d\n",
 			               recordType, recordPos, m_recordLength));
 		else
 		{
 			Method recordHandler = handlers[index].handler;
-			if(!recordHandler)
+			if (!recordHandler)
 				WPG_DEBUG_MSG(("Record '%s' (ignored) type 0x%02x at %li  size %d\n",
 				               handlers[index].name, recordType, recordPos, m_recordLength));
 			else
@@ -261,9 +260,9 @@ bool WPG1Parser::parse()
 
 		WPG_DEBUG_MSG(("Current stream position: %li\n", m_input->tell()));
 
-		if(m_exit) break;
+		if (m_exit) break;
 
-		m_input->seek(m_recordEnd+1, WPX_SEEK_SET);
+		m_input->seek(m_recordEnd+1, librevenge::RVNG_SEEK_SET);
 	}
 
 	if (!m_exit)
@@ -279,14 +278,15 @@ void WPG1Parser::handleStartWPG()
 		handleEndWPG();
 		return;
 	}
-	m_input->seek(2, WPX_SEEK_CUR);
+	m_input->seek(2, librevenge::RVNG_SEEK_CUR);
 	m_width = readU16();
 	m_height = readU16();
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:width", (double)m_width/1200.0);
 	propList.insert("svg:height", (double)m_height/1200.0);
-	m_painter->startGraphics(propList);
+	m_painter->startDocument(::librevenge::RVNGPropertyList());
+	m_painter->startPage(propList);
 	m_graphicsStarted = true;
 
 	WPG_DEBUG_MSG(("StartWPG\n"));
@@ -296,7 +296,8 @@ void WPG1Parser::handleEndWPG()
 {
 	if (!m_graphicsStarted)
 		return;
-	m_painter->endGraphics();
+	m_painter->endPage();
+	m_painter->endDocument();
 	m_exit = true;
 
 	WPG_DEBUG_MSG(("EndWPG\n"));
@@ -312,13 +313,13 @@ void WPG1Parser::handleColormap()
 		return;
 
 	WPG_DEBUG_MSG(("Colormap\n"));
-	for(unsigned int i = 0; i < numEntries; i++)
+	for (unsigned int i = 0; i < numEntries; i++)
 	{
 		unsigned char red = readU8();
 		unsigned char green = readU8();
 		unsigned char blue = readU8();
 		libwpg::WPGColor color(red, green, blue);
-		m_colorPalette[startIndex+i] = color;
+		m_colorPalette[int(startIndex+i)] = color;
 		WPG_DEBUG_MSG(("Index#%d: RGB %s\n", startIndex+i, color.getColorString().cstr()));
 	}
 }
@@ -330,14 +331,14 @@ void WPG1Parser::handleFillAttributes()
 	unsigned char style = readU8();
 	unsigned char color = readU8();
 
-	if(style == 0)
+	if (style == 0)
 		m_style.insert("draw:fill", "none");
-	if(style == 1)
+	if (style == 1)
 		m_style.insert("draw:fill", "solid");
 
 	m_brushForeColor = m_colorPalette[color];
 	m_style.insert("draw:fill-color", m_brushForeColor.getColorString());
-	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("draw:opacity", m_brushForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
 	WPG_DEBUG_MSG(("Fill Attributes\n"));
 	WPG_DEBUG_MSG(("         Fill style: %d\n", style));
@@ -352,15 +353,15 @@ void WPG1Parser::handleLineAttributes()
 	unsigned char color = readU8();
 	unsigned int width = readU16();
 
-	if (!style)
+	if (!style || !width)
 		m_style.insert("draw:stroke", "none");
 	else
 		m_style.insert("draw:stroke", "solid");
 	m_penForeColor = m_colorPalette[color];
 	m_style.insert("svg:stroke-color", m_penForeColor.getColorString());
-	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), WPX_PERCENT);
+	m_style.insert("svg:stroke-opacity", m_penForeColor.getOpacity(), librevenge::RVNG_PERCENT);
 
-	if (!width && style)
+	if (!width && style) // CHECKME: !width or !style
 		m_style.insert("svg:stroke-width", 0.0);
 	else
 		m_style.insert("svg:stroke-width", (double)width / 1200.0);
@@ -368,7 +369,7 @@ void WPG1Parser::handleLineAttributes()
 	WPG_DEBUG_MSG(("Line Attributes\n"));
 	WPG_DEBUG_MSG(("         Line style: %d\n", style));
 	WPG_DEBUG_MSG(("   Line color index: %d\n", color));
-	WPG_DEBUG_MSG(("         Line width: %d\n", width));
+	WPG_DEBUG_MSG(("         Line width: %d\n", (int) width));
 }
 
 void WPG1Parser::handleLine()
@@ -380,8 +381,8 @@ void WPG1Parser::handleLine()
 	int ex = readS16();
 	int ey = readS16();
 
-	::WPXPropertyListVector points;
-	::WPXPropertyList point;
+	::librevenge::RVNGPropertyListVector points;
+	::librevenge::RVNGPropertyList point;
 	point.insert("svg:x", (double)sx/1200.0);
 	point.insert("svg:y", (double)(m_height-sy)/1200.0);
 	points.append(point);
@@ -390,9 +391,14 @@ void WPG1Parser::handleLine()
 	point.insert("svg:y", (double)(m_height-ey)/1200.0);
 	points.append(point);
 
-	m_painter->setStyle(m_style, m_gradient);
+	librevenge::RVNGPropertyList tmpStyle(m_style);
+	if (m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
 
-	m_painter->drawPolyline(points);
+	librevenge::RVNGPropertyList tmpPoints;
+	tmpPoints.insert("svg:points", points);
+	m_painter->drawPolyline(tmpPoints);
 
 	WPG_DEBUG_MSG(("Line\n"));
 	WPG_DEBUG_MSG(("    Starting point: %d,%d\n", sx, sy));
@@ -405,9 +411,9 @@ void WPG1Parser::handlePolyline()
 		return;
 	unsigned int count = readU16();
 
-	::WPXPropertyListVector points;
-	::WPXPropertyList point;
-	for(unsigned int i = 0; i < count; i++ )
+	::librevenge::RVNGPropertyListVector points;
+	::librevenge::RVNGPropertyList point;
+	for (unsigned int i = 0; i < count; i++)
 	{
 		point.clear();
 		long x = readS16();
@@ -417,9 +423,11 @@ void WPG1Parser::handlePolyline()
 		points.append(point);
 	}
 
-	m_painter->setStyle(m_style, ::WPXPropertyListVector());
+	m_painter->setStyle(m_style);
 
-	m_painter->drawPolyline(points);
+	librevenge::RVNGPropertyList tmpPoints;
+	tmpPoints.insert("svg:points", points);
+	m_painter->drawPolyline(tmpPoints);
 
 	WPG_DEBUG_MSG(("Polyline\n"));
 }
@@ -433,14 +441,17 @@ void WPG1Parser::handleRectangle()
 	int w = readS16();
 	int h = readS16();
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:x", (double)x/1200.0);
 	// in WPG, we have the coordinate of lower left point, in SVG-ish coordinates we have to get upper left
 	propList.insert("svg:y", (double)(m_height - h - y)/1200.0);
 	propList.insert("svg:width", (double)w/1200.0);
 	propList.insert("svg:height",(double)h/1200.0);
 
-	m_painter->setStyle(m_style, m_gradient);
+	librevenge::RVNGPropertyList tmpStyle(m_style);
+	if (m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
 
 	m_painter->drawRectangle(propList);
 
@@ -456,9 +467,9 @@ void WPG1Parser::handlePolygon()
 		return;
 	unsigned int count = readU16();
 
-	::WPXPropertyListVector points;
-	::WPXPropertyList point;
-	for(unsigned int i = 0; i < count; i++ )
+	::librevenge::RVNGPropertyListVector points;
+	::librevenge::RVNGPropertyList point;
+	for (unsigned int i = 0; i < count; i++)
 	{
 		point.clear();
 		long x = readS16();
@@ -468,9 +479,14 @@ void WPG1Parser::handlePolygon()
 		points.append(point);
 	}
 
-	m_painter->setStyle(m_style, m_gradient);
+	librevenge::RVNGPropertyList tmpStyle(m_style);
+	if (m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
 
-	m_painter->drawPolygon(points);
+	librevenge::RVNGPropertyList tmpPoints;
+	tmpPoints.insert("svg:points", points);
+	m_painter->drawPolygon(tmpPoints);
 
 	WPG_DEBUG_MSG(("Polygon\n"));
 }
@@ -480,19 +496,22 @@ void WPG1Parser::handleEllipse()
 	if (!m_graphicsStarted)
 		return;
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:cx", (double)readS16()/1200.0);
 	propList.insert("svg:cy", (double)(m_height-readS16())/1200.0);
 	propList.insert("svg:rx", (double)readS16()/1200.0);
 	propList.insert("svg:ry", (double)readS16()/1200.0);
-	propList.insert("libwpg:rotate", (double)readS16());
+	propList.insert("librevenge:rotate", (double)readS16());
 
 #if 0
 	int beginAngle = readS16();
 	int endAngle = readS16();
 	unsigned flags = readU16();
 #endif
-	m_painter->setStyle(m_style, m_gradient);
+	librevenge::RVNGPropertyList tmpStyle(m_style);
+	if (m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
 
 	m_painter->drawEllipse(propList);
 
@@ -510,12 +529,12 @@ void WPG1Parser::handleCurvedPolyline()
 	unsigned int count = readU16();
 	if (!count)
 		return;
-	::WPXPropertyListVector path;
-	::WPXPropertyList element;
+	::librevenge::RVNGPropertyListVector path;
+	::librevenge::RVNGPropertyList element;
 
 	long xInitial = readS16();
 	long yInitial = readS16();
-	element.insert("libwpg:path-action", "M");
+	element.insert("librevenge:path-action", "M");
 	element.insert("svg:x", (double)xInitial/1200.0);
 	element.insert("svg:y", (double)(m_height-yInitial)/1200.0);
 	path.append(element);
@@ -529,7 +548,7 @@ void WPG1Parser::handleCurvedPolyline()
 		long yCoordinate = readS16();
 
 		element.clear();
-		element.insert("libwpg:path-action", "C");
+		element.insert("librevenge:path-action", "C");
 		element.insert("svg:x1", (double)xControl1/1200.0);
 		element.insert("svg:y1", (double)(m_height-yControl1)/1200.0);
 		element.insert("svg:x2", (double)xControl2/1200.0);
@@ -540,9 +559,13 @@ void WPG1Parser::handleCurvedPolyline()
 
 	}
 
-	m_painter->setStyle(m_style, m_gradient);
-
-	m_painter->drawPath(path);
+	librevenge::RVNGPropertyList tmpStyle(m_style);
+	if (m_gradient.count())
+		tmpStyle.insert("svg:linearGradient", m_gradient);
+	m_painter->setStyle(tmpStyle);
+	librevenge::RVNGPropertyList propList;
+	propList.insert("svg:d", path);
+	m_painter->drawPath(propList);
 
 	WPG_DEBUG_MSG(("Curved Polyline\n"));
 }
@@ -558,50 +581,50 @@ void WPG1Parser::decodeRLE(std::vector<unsigned char> &buffer, unsigned width, u
 	// round to the next byte
 	unsigned scanline_width = (width * depth + 7)/8;
 	unsigned tmpBufferSize = scanline_width * height;
-	WPG_DEBUG_MSG(("Scanline width: %d\n", scanline_width));
+	WPG_DEBUG_MSG(("Scanline width: %d\n", (int) scanline_width));
 	WPG_DEBUG_MSG(("Output size: %d\n", scanline_width * height));
 
 	WPG_DEBUG_MSG(("Decoding RLE data\n"));
 
 	buffer.reserve(tmpBufferSize);
-	while (m_input->tell() < m_recordEnd && !m_input->atEOS() && buffer.size() < tmpBufferSize)
+	while (m_input->tell() < m_recordEnd && !m_input->isEnd() && buffer.size() < tmpBufferSize)
 	{
 		unsigned char opcode = readU8();
 
-		if(opcode & 0x80)
+		if (opcode & 0x80)
 		{
 			// run of byte
 			int count = (int)(opcode & 0x7f);
 			unsigned char pixel = (count > 0) ? readU8() : 0xff;
-			if(count == 0)
+			if (count == 0)
 				count = (int)readU8();
-			for( ; count ; --count)
-				buffer.push_back( pixel );
+			for (; count ; --count)
+				buffer.push_back(pixel);
 		}
 		else
 		{
 			int count = (int)(opcode & 0x7f);
-			if(count > 0)
+			if (count > 0)
 			{
 				// literal byte copy
-				for( ; count ; --count)
-					buffer.push_back( readU8() );
+				for (; count ; --count)
+					buffer.push_back(readU8());
 			}
 			else
 			{
 				// copy entire scan line
 				count = (int)readU8();
-				if (buffer.size() < scanline_width )
+				if (buffer.size() < scanline_width)
 				{
 					WPG_DEBUG_MSG(("Cannot copy the scanline, not enough data %li\n", (long)buffer.size()));
 					break;
 				}
-				unsigned raster_source = buffer.size() - scanline_width;
-				for( ; count; --count)
-					for(unsigned r = 0; r < scanline_width ; r++)
+				unsigned raster_source = unsigned(buffer.size() - scanline_width);
+				for (; count; --count)
+					for (unsigned r = 0; r < scanline_width ; r++)
 					{
 						unsigned char pixel = buffer[raster_source + r];
-						buffer.push_back( pixel );
+						buffer.push_back(pixel);
 					}
 			}
 		}
@@ -616,7 +639,7 @@ void WPG1Parser::decodeRLE(std::vector<unsigned char> &buffer, unsigned width, u
 void WPG1Parser::fillPixels(libwpg::WPGBitmap &bitmap, const unsigned char *buffer, unsigned width, unsigned height, unsigned depth)
 {
 	// sanity
-	if(!buffer)
+	if (!buffer)
 		return;
 
 	if (depth != 8 && depth != 4 && depth != 2 && depth != 1)
@@ -626,22 +649,22 @@ void WPG1Parser::fillPixels(libwpg::WPGBitmap &bitmap, const unsigned char *buff
 	unsigned scanline_width = (width * depth + 7)/8;
 
 	// 1-bit image: black and white
-	if(depth == 1)
+	if (depth == 1)
 	{
 		libwpg::WPGColor black(0, 0, 0);
 		libwpg::WPGColor white(255, 255, 255);
-		for(unsigned y = 0; y < height; y++)
+		for (unsigned y = 0; y < height; y++)
 		{
 			const unsigned char *buf = buffer + y * scanline_width;
-			for(unsigned x = 0; x < width; x++)
-				if(buf[x/8] & (0x80 >> (x & 7)))
-					bitmap.setPixel(x, y, white);
+			for (unsigned x = 0; x < width; x++)
+				if (buf[x/8] & (0x80 >> (x & 7)))
+					bitmap.setPixel((int)x, (int)y, white);
 				else
-					bitmap.setPixel(x, y, black);
+					bitmap.setPixel((int)x, (int)y, black);
 		}
 	}
 	// 2-bit image: 4-color bitmap (indexed)
-	else if(depth == 2)
+	else if (depth == 2)
 	{
 		unsigned i = 0;
 		for (unsigned y = 0; y < height; y++)
@@ -650,12 +673,12 @@ void WPG1Parser::fillPixels(libwpg::WPGBitmap &bitmap, const unsigned char *buff
 				if ((x==0) && (i % 4 != 0))
 					i = (i/4 + 1) * 4;
 				unsigned index = ((buffer[i/4] & (0x03 << 2*(3 - (i % 4)))) >> 2*(3 - (i % 4)));
-				const libwpg::WPGColor &color = m_colorPalette[index];
-				bitmap.setPixel(x, y, color);
+				const libwpg::WPGColor &color = m_colorPalette[(int)index];
+				bitmap.setPixel((int)x, (int)y, color);
 			}
 	}
 	// 4 -bit image: 16-colour bitmap (indexed)
-	else if(depth == 4)
+	else if (depth == 4)
 	{
 		unsigned i = 0;
 		for (unsigned y = 0; y < height; y++)
@@ -664,20 +687,20 @@ void WPG1Parser::fillPixels(libwpg::WPGBitmap &bitmap, const unsigned char *buff
 				if ((x==0) && (i % 2 != 0))
 					i = (i/2 + 1) * 2;
 				unsigned index = ((buffer[i/2] & (0x0f << 4*(1 - (i % 2)))) >> 4*(1 - (i % 2)));
-				const libwpg::WPGColor &color = m_colorPalette[index];
-				bitmap.setPixel(x, y, color);
+				const libwpg::WPGColor &color = m_colorPalette[(int) index];
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 	}
 	// 8-bit image: 256-colour image (indexed)
-	else if(depth == 8)
+	else if (depth == 8)
 	{
-		for(unsigned y = 0; y < height; y++)
+		for (unsigned y = 0; y < height; y++)
 		{
 			const unsigned char *buf = buffer + y * scanline_width;
-			for(unsigned x = 0; x < width; x++)
+			for (unsigned x = 0; x < width; x++)
 			{
 				const libwpg::WPGColor &color = m_colorPalette[buf[x]];
-				bitmap.setPixel(x, y, color);
+				bitmap.setPixel((int) x, (int) y, color);
 			}
 		}
 
@@ -706,9 +729,9 @@ void WPG1Parser::handleBitmapTypeOne()
 		return;
 
 	// Sanity checks
-	if(hres <= 0)
+	if (hres <= 0)
 		hres = 72;
-	if(vres <= 0)
+	if (vres <= 0)
 		vres = 72;
 	if (width < 0)
 		width = 0;
@@ -719,19 +742,20 @@ void WPG1Parser::handleBitmapTypeOne()
 	// Assume on the corner (0,0)
 
 	libwpg::WPGBitmap bitmap(width, height, vres, hres);
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:x", 0.0);
 	propList.insert("svg:y", 0.0);
 	propList.insert("svg:width", (double)width/(double)hres);
 	propList.insert("svg:height", (double)height/(double)vres);
-	propList.insert("libwpg:mime-type", "image/bmp");
+	propList.insert("librevenge:mime-type", "image/bmp");
 
 	std::vector<unsigned char> buffer;
-	decodeRLE(buffer, width, height, depth);
+	decodeRLE(buffer, (unsigned int)width, (unsigned int)height, (unsigned int) depth);
 	if (buffer.size() && buffer.size() == (unsigned long)((width*depth + 7)/8)*height)
 	{
-		fillPixels(bitmap, &buffer[0], width, height, depth);
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		fillPixels(bitmap, &buffer[0], (unsigned int)width, (unsigned int)height, (unsigned int)depth);
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 }
 
@@ -767,9 +791,9 @@ void WPG1Parser::handleBitmapTypeTwo()
 		return;
 
 	// Sanity checks
-	if(hres <= 0)
+	if (hres <= 0)
 		hres = 72;
-	if(vres <= 0)
+	if (vres <= 0)
 		vres = 72;
 	if (width < 0)
 		width = 0;
@@ -786,19 +810,20 @@ void WPG1Parser::handleBitmapTypeTwo()
 	WPG_DEBUG_MSG(("%li %li   %li %li\n", xs1, ys1, xs2, ys2));
 
 	libwpg::WPGBitmap bitmap(width, height, vres, hres);
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 	propList.insert("svg:x", (double)xs1/(double)hres);
 	propList.insert("svg:y", (double)(ys1)/(double)vres);
 	propList.insert("svg:width", (double)(xs2-xs1)/(double)hres);
 	propList.insert("svg:height", (double)(ys2-ys1)/(double)vres);
-	propList.insert("libwpg:mime-type", "image/bmp");
+	propList.insert("librevenge:mime-type", "image/bmp");
 
 	std::vector<unsigned char> buffer;
-	decodeRLE(buffer, width, height, depth);
+	decodeRLE(buffer, (unsigned int)width, (unsigned int)height, (unsigned int)depth);
 	if (buffer.size()  && buffer.size() == (unsigned long)((width*depth + 7)/8)*height)
 	{
-		fillPixels(bitmap, &buffer[0], width, height, depth);
-		m_painter->drawGraphicObject(propList, bitmap.getDIB());
+		fillPixels(bitmap, &buffer[0], (unsigned int)width, (unsigned int)height, (unsigned int)depth);
+		propList.insert("office:binary-data", bitmap.getDIB());
+		m_painter->drawGraphicObject(propList);
 	}
 }
 
@@ -811,20 +836,23 @@ void WPG1Parser::handlePostscriptTypeOne()
 	long x2 = readS16();
 	long y2 = readS16();
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 
 	propList.insert("svg:x", (double)x1/72.0);
 	propList.insert("svg:y", (double)m_height/1200.0 - (double)y1/72.0);
 	propList.insert("svg:width", ((double)x2 - (double)x1)/72.0);
 	propList.insert("svg:height", ((double)y1 - (double)y2)/72.0);
-	propList.insert("libwpg:mime-type", "application/x-postscript");
+	propList.insert("librevenge:mime-type", "application/x-postscript");
 
-	::WPXBinaryData data;
+	::librevenge::RVNGBinaryData data;
 	data.clear();
-	while (!m_input->atEOS() && m_input->tell() <= m_recordEnd)
-		data.append((char)readU8());
+	while (!m_input->isEnd() && m_input->tell() <= m_recordEnd)
+		data.append((unsigned char)readU8());
 	if (data.size())
-		m_painter->drawGraphicObject(propList, data);
+	{
+		propList.insert("office:binary-data", data);
+		m_painter->drawGraphicObject(propList);
+	}
 }
 
 void WPG1Parser::handlePostscriptTypeTwo()
@@ -844,7 +872,7 @@ void WPG1Parser::handlePostscriptTypeTwo()
 	int y2 = readS16();
 
 	WPG_DEBUG_MSG(("Postscript (Type 2)\n"));
-	WPG_DEBUG_MSG(("       Length of Data: %d\n", lengthOfData));
+	WPG_DEBUG_MSG(("       Length of Data: %d\n", (int) lengthOfData));
 	WPG_DEBUG_MSG(("       Rotation Angle: %d\n", rotation));
 	WPG_DEBUG_MSG(("   Bottom left corner: %d,%d\n", x1, y1));
 	WPG_DEBUG_MSG(("     Top right corner: %d,%d\n", x2, y2));
@@ -858,7 +886,7 @@ void WPG1Parser::handlePostscriptTypeTwo()
 	long ys2 = (y1 <= y2) ? y2 : y1;
 	WPG_DEBUG_MSG(("%li %li   %li %li\n", xs1, ys1, xs2, ys2));
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 
 	propList.insert("svg:x", (double)xs1/1200.0);
 	propList.insert("svg:y", (double)(ys1)/1200.0);
@@ -866,16 +894,19 @@ void WPG1Parser::handlePostscriptTypeTwo()
 	propList.insert("svg:width", ((double)xs2 - (double)xs1)/1200.0);
 	propList.insert("svg:height", ((double)ys2 -(double)ys1)/1200.0);
 
-	propList.insert("libwpg:mime-type", "image/x-eps");
+	propList.insert("librevenge:mime-type", "image/x-eps");
 
-	m_input->seek(48, WPX_SEEK_CUR);
+	m_input->seek(48, librevenge::RVNG_SEEK_CUR);
 
-	::WPXBinaryData data;
+	::librevenge::RVNGBinaryData data;
 	data.clear();
-	while (!m_input->atEOS() && m_input->tell() <= m_recordEnd)
-		data.append((char)readU8());
+	while (!m_input->isEnd() && m_input->tell() <= m_recordEnd)
+		data.append((unsigned char)readU8());
 	if (data.size())
-		m_painter->drawGraphicObject(propList, data);
+	{
+		propList.insert("office:binary-data", data);
+		m_painter->drawGraphicObject(propList);
+	}
 }
 
 void WPG1Parser::handleGraphicsTextAttributes()
@@ -891,23 +922,23 @@ void WPG1Parser::handleGraphicsTextTypeOne()
 	unsigned short textLength = readU16();
 	int x = readS16();
 	int y = readS16();
-	WPXString textString;
+	librevenge::RVNGString textString;
 	for (unsigned short i=0; i < textLength; i++)
-		textString.append(readU8());
+		textString.append((char)readU8());
 
 	WPG_DEBUG_MSG(("Graphics Text (Type 1)\n"));
-	WPG_DEBUG_MSG(("  Length of String: %d\n", textLength));
+	WPG_DEBUG_MSG(("  Length of String: %d\n", (int) textLength));
 	WPG_DEBUG_MSG(("   String position: %d,%d\n", x, y));
 	WPG_DEBUG_MSG(("            String: %s\n", textString.cstr()));
 
 	y = m_height - y;
 
-	::WPXPropertyList propList;
+	::librevenge::RVNGPropertyList propList;
 
 	propList.insert("svg:x", (double)x/1200.0);
 	propList.insert("svg:y", (double)(y)/1200.0);
 
-	m_painter->startTextObject(propList, ::WPXPropertyListVector());
+	m_painter->startTextObject(propList);
 
 	m_painter->insertText(textString);
 
@@ -919,7 +950,7 @@ void WPG1Parser::handleGraphicsTextTypeTwo()
 	if (!m_graphicsStarted)
 		return;
 #ifdef DEBUG
-	int sizeEquivalentData = readU32();
+	int sizeEquivalentData = (int) readU32();
 	short rotationAngle = readS16();
 #endif
 	unsigned short textLength = readU16();
@@ -932,21 +963,21 @@ void WPG1Parser::handleGraphicsTextTypeTwo()
 	int sy = readS16();
 	unsigned char type = readU8();
 #endif
-	WPXBinaryData textString;
+	librevenge::RVNGBinaryData textString;
 	for (unsigned short i=0; i < textLength; i++)
 		textString.append(readU8());
 
 	WPG_DEBUG_MSG(("Graphics Text (Type 1)\n"));
 	WPG_DEBUG_MSG(("  Size of Equivalent data: %d\n", sizeEquivalentData));
 	WPG_DEBUG_MSG(("           Rotation Angle: %d\n", rotationAngle));
-	WPG_DEBUG_MSG(("         Length of String: %d\n", textLength));
+	WPG_DEBUG_MSG(("         Length of String: %d\n", (int) textLength));
 	WPG_DEBUG_MSG(("           Start position: %d,%d\n", x1, y1));
 	WPG_DEBUG_MSG(("             End position: %d,%d\n", x2, y2));
 	WPG_DEBUG_MSG(("             Scale factor: %d,%d\n", sx, sy));
 	WPG_DEBUG_MSG(("                     Type: %d\n", type));
 
 //	WPGTextDataHandler handler(m_painter);
-//	WPDocument::parseSubDocument(const_cast<WPXInputStream *>(textString.getDataStream()), &handler, WPD_FILE_FORMAT_WP5);
+//	WPDocument::parseSubDocument(const_cast<librevenge::RVNGInputStream *>(textString.getDataStream()), &handler, librevenge::RVNG_FILE_FORMAT_WP5);
 }
 
 void WPG1Parser::resetPalette()

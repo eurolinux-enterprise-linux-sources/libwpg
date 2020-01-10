@@ -24,16 +24,13 @@
  * Corel Corporation or Corel Corporation Limited."
  */
 
-#include "WPGraphics.h"
+#include <sstream>
+#include <libwpg/libwpg.h>
 #include "WPGHeader.h"
 #include "WPGXParser.h"
 #include "WPG1Parser.h"
 #include "WPG2Parser.h"
 #include "libwpg_utils.h"
-#include "WPGSVGGenerator.h"
-#include "WPGInternalStream.h"
-#include "WPGPaintInterface.h"
-#include <sstream>
 
 /**
 Analyzes the content of an input stream to see if it can be parsed
@@ -41,14 +38,14 @@ Analyzes the content of an input stream to see if it can be parsed
 \return A value that indicates whether the content from the input
 stream is a WordPerfect Graphics that libwpg is able to parse
 */
-bool libwpg::WPGraphics::isSupported(WPXInputStream *input)
+WPGAPI bool libwpg::WPGraphics::isSupported(librevenge::RVNGInputStream *input)
 {
-	WPXInputStream *graphics = 0;
+	librevenge::RVNGInputStream *graphics = 0;
 	bool isDocumentOLE = false;
 
-	if (input->isOLEStream())
+	if (input->isStructured())
 	{
-		graphics = input->getDocumentOLEStream("PerfectOffice_MAIN");
+		graphics = input->getSubStreamByName("PerfectOffice_MAIN");
 		if (graphics)
 			isDocumentOLE = true;
 		else
@@ -57,41 +54,37 @@ bool libwpg::WPGraphics::isSupported(WPXInputStream *input)
 	else
 		graphics = input;
 
-	graphics->seek(0, WPX_SEEK_SET);
+	graphics->seek(0, librevenge::RVNG_SEEK_SET);
+
+	bool retVal = false;
 
 	WPGHeader header;
-	if(!header.load(graphics))
-	{
-		if (graphics && isDocumentOLE)
-			delete graphics;
-		return false;
-	}
+	if (header.load(graphics))
+		retVal = header.isSupported();
 
-	bool retVal = header.isSupported();
-
-	if (graphics && isDocumentOLE)
+	if (isDocumentOLE)
 		delete graphics;
 	return retVal;
 }
 
 /**
 Parses the input stream content. It will make callbacks to the functions provided by a
-WPGPaintInterface class implementation when needed. This is often commonly called the
+librevenge::RVNGDrawingInterface class implementation when needed. This is often commonly called the
 'main parsing routine'.
 \param input The input stream
-\param painter A WPGPainterInterface implementation
+\param drawingInterface A WPGPainterInterface implementation
 \return A value that indicates whether the parsing was successful
 */
-bool libwpg::WPGraphics::parse(::WPXInputStream *input, libwpg::WPGPaintInterface *painter, libwpg::WPGFileFormat fileFormat)
+WPGAPI bool libwpg::WPGraphics::parse(::librevenge::RVNGInputStream *input, ::librevenge::RVNGDrawingInterface *drawingInterface, libwpg::WPGFileFormat fileFormat)
 {
 	WPGXParser *parser = 0;
 
-	WPXInputStream *graphics = 0;
+	librevenge::RVNGInputStream *graphics = 0;
 	bool isDocumentOLE = false;
 
-	if (input->isOLEStream())
+	if (input->isStructured())
 	{
-		graphics = input->getDocumentOLEStream("PerfectOffice_MAIN");
+		graphics = input->getSubStreamByName("PerfectOffice_MAIN");
 		if (graphics)
 			isDocumentOLE = true;
 		else
@@ -100,7 +93,7 @@ bool libwpg::WPGraphics::parse(::WPXInputStream *input, libwpg::WPGPaintInterfac
 	else
 		graphics = input;
 
-	graphics->seek(0, WPX_SEEK_SET);
+	graphics->seek(0, librevenge::RVNG_SEEK_SET);
 
 	WPG_DEBUG_MSG(("Loading header...\n"));
 	unsigned char tmpMajorVersion = 0x00;
@@ -109,14 +102,14 @@ bool libwpg::WPGraphics::parse(::WPXInputStream *input, libwpg::WPGPaintInterfac
 	else if (fileFormat == WPG_WPG2)
 		tmpMajorVersion = 0x02;
 	WPGHeader header;
-	if(!header.load(graphics))
+	if (!header.load(graphics))
 	{
 		if (isDocumentOLE)
 			delete graphics;
 		return false;
 	}
 
-	if(!header.isSupported() && (fileFormat == WPG_AUTODETECT))
+	if (!header.isSupported() && (fileFormat == WPG_AUTODETECT))
 	{
 		WPG_DEBUG_MSG(("Unsupported file format!\n"));
 		if (isDocumentOLE)
@@ -126,7 +119,7 @@ bool libwpg::WPGraphics::parse(::WPXInputStream *input, libwpg::WPGPaintInterfac
 	else if (header.isSupported())
 	{
 		// seek to the start of document
-		graphics->seek(header.startOfDocument(), WPX_SEEK_SET);
+		graphics->seek((long)header.startOfDocument(), librevenge::RVNG_SEEK_SET);
 		tmpMajorVersion = (unsigned char)(header.majorVersion());
 		if (tmpMajorVersion == 0x01)
 		{
@@ -138,29 +131,29 @@ bool libwpg::WPGraphics::parse(::WPXInputStream *input, libwpg::WPGPaintInterfac
 			if (header.load(graphics) && header.isSupported())
 			{
 				WPG_DEBUG_MSG(("An invalid graphics we produced :(\n"));
-				graphics->seek(header.startOfDocument() + 16, WPX_SEEK_SET);
+				graphics->seek((long) header.startOfDocument() + 16, librevenge::RVNG_SEEK_SET);
 				tmpMajorVersion = (unsigned char)(header.majorVersion());
 			}
 			else
-				graphics->seek(returnPosition, WPX_SEEK_SET);
+				graphics->seek((long) returnPosition, librevenge::RVNG_SEEK_SET);
 
 		}
 	}
 	else
 		// here we force parsing of headerless pictures
-		graphics->seek(0, WPX_SEEK_SET);
+		graphics->seek(0, librevenge::RVNG_SEEK_SET);
 
 	bool retval;
 	switch (tmpMajorVersion)
 	{
 	case 0x01: // WPG1
 		WPG_DEBUG_MSG(("Parsing WPG1\n"));
-		parser = new WPG1Parser(graphics, painter);
+		parser = new WPG1Parser(graphics, drawingInterface);
 		retval = parser->parse();
 		break;
 	case 0x02: // WPG2
 		WPG_DEBUG_MSG(("Parsing WPG2\n"));
-		parser = new WPG2Parser(graphics, painter);
+		parser = new WPG2Parser(graphics, drawingInterface);
 		retval = parser->parse();
 		break;
 	default: // other :-)
@@ -177,33 +170,4 @@ bool libwpg::WPGraphics::parse(::WPXInputStream *input, libwpg::WPGPaintInterfac
 	return retval;
 }
 
-bool libwpg::WPGraphics::parse(const unsigned char *data, unsigned long size, libwpg::WPGPaintInterface *painter, libwpg::WPGFileFormat fileFormat)
-{
-	WPGInternalInputStream tmpStream(data, size);
-	return libwpg::WPGraphics::parse(&tmpStream, painter, fileFormat);
-}
-/**
-Parses the input stream content and generates a valid Scalable Vector Graphics
-Provided as a convenience function for applications that support SVG internally.
-\param input The input stream
-\param output The output string whose content is the resulting SVG
-\return A value that indicates whether the SVG generation was successful.
-*/
-bool libwpg::WPGraphics::generateSVG(::WPXInputStream *input, WPXString &output, libwpg::WPGFileFormat fileFormat)
-{
-	std::ostringstream tmpOutputStream;
-	libwpg::WPGSVGGenerator generator(tmpOutputStream);
-	bool result = libwpg::WPGraphics::parse(input, &generator, fileFormat);
-	if (result)
-		output = WPXString(tmpOutputStream.str().c_str());
-	else
-		output = WPXString("");
-	return result;
-}
-
-bool libwpg::WPGraphics::generateSVG(const unsigned char *data, unsigned long size, WPXString &output, libwpg::WPGFileFormat fileFormat)
-{
-	WPGInternalInputStream tmpStream(data, size);
-	return libwpg::WPGraphics::generateSVG(&tmpStream, output, fileFormat);
-}
 /* vim:set shiftwidth=4 softtabstop=4 noexpandtab: */

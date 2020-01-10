@@ -33,7 +33,7 @@ class WPGDashArrayPrivate
 {
 public:
 	WPGDashArrayPrivate() : dashes(), dots1(0), dots2(0),
-		dots1len(0.0), dots2len(0.0), gap(0.0) {};
+		dots1len(0.0), dots2len(0.0), gap(0.0) {}
 	void _recalculateDots();
 	std::vector<double> dashes;
 	int dots1;
@@ -55,11 +55,11 @@ void libwpg::WPGDashArrayPrivate::_recalculateDots()
 		gap = dashes[1];
 	}
 
-	unsigned count = dashes.size() / 2;
+	unsigned count = unsigned(dashes.size() / 2);
 	unsigned i = 0;
 	for (; i < count;)
 	{
-		if (dots1len == dashes[2*i])
+		if (dots1len <= dashes[2*i] && dots1len >= dashes[2*i])
 			dots1++;
 		else
 			break;
@@ -73,7 +73,7 @@ void libwpg::WPGDashArrayPrivate::_recalculateDots()
 	}
 	for (; i < count;)
 	{
-		if (dots2len == dashes[2*i])
+		if (dots2len <= dashes[2*i] && dots2len >= dashes[2*i])
 			dots2++;
 		else
 			break;

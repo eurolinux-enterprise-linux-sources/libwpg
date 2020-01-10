@@ -28,7 +28,93 @@
 #include "WPGXParser.h"
 #include "libwpg_utils.h"
 
-WPGXParser::WPGXParser(WPXInputStream *input, libwpg::WPGPaintInterface *painter):
+
+namespace
+{
+
+static void separateTabsAndInsertText(librevenge::RVNGDrawingInterface *iface, const librevenge::RVNGString &text)
+{
+	if (!iface || text.empty())
+		return;
+	librevenge::RVNGString tmpText;
+	librevenge::RVNGString::Iter i(text);
+	for (i.rewind(); i.next();)
+	{
+		if (*(i()) == '\t')
+		{
+			if (!tmpText.empty())
+			{
+				if (iface)
+					iface->insertText(tmpText);
+				tmpText.clear();
+			}
+
+			if (iface)
+				iface->insertTab();
+		}
+		else if (*(i()) == '\n')
+		{
+			if (!tmpText.empty())
+			{
+				if (iface)
+					iface->insertText(tmpText);
+				tmpText.clear();
+			}
+
+			if (iface)
+				iface->insertLineBreak();
+		}
+		else
+		{
+			tmpText.append(i());
+		}
+	}
+	if (iface && !tmpText.empty())
+		iface->insertText(tmpText);
+}
+
+static void separateSpacesAndInsertText(librevenge::RVNGDrawingInterface *iface, const librevenge::RVNGString &text)
+{
+	if (!iface)
+		return;
+	if (text.empty())
+	{
+		iface->insertText(text);
+		return;
+	}
+	librevenge::RVNGString tmpText;
+	int numConsecutiveSpaces = 0;
+	librevenge::RVNGString::Iter i(text);
+	for (i.rewind(); i.next();)
+	{
+		if (*(i()) == ' ')
+			numConsecutiveSpaces++;
+		else
+			numConsecutiveSpaces = 0;
+
+		if (numConsecutiveSpaces > 1)
+		{
+			if (!tmpText.empty())
+			{
+				separateTabsAndInsertText(iface, tmpText);
+				tmpText.clear();
+			}
+
+			if (iface)
+				iface->insertSpace();
+		}
+		else
+		{
+			tmpText.append(i());
+		}
+	}
+	separateTabsAndInsertText(iface, tmpText);
+}
+
+} // anonymous namespace
+
+
+WPGXParser::WPGXParser(librevenge::RVNGInputStream *input, librevenge::RVNGDrawingInterface *painter):
 	m_input(input), m_painter(painter), m_colorPalette(std::map<int,libwpg::WPGColor>())
 {
 }
@@ -41,7 +127,7 @@ WPGXParser::WPGXParser(const WPGXParser &parser):
 
 unsigned char WPGXParser::readU8()
 {
-	if (!m_input || m_input->atEOS())
+	if (!m_input || m_input->isEnd())
 		return (unsigned char)0;
 	unsigned long numBytesRead;
 	unsigned char const *p = m_input->read(sizeof(unsigned char), numBytesRead);
@@ -64,7 +150,7 @@ unsigned int WPGXParser::readU32()
 	unsigned int p1 = (unsigned int)readU8();
 	unsigned int p2 = (unsigned int)readU8();
 	unsigned int p3 = (unsigned int)readU8();
-	return (unsigned long)(p0|(p1<<8)|(p2<<16)|(p3<<24));
+	return (unsigned int)(p0|(p1<<8)|(p2<<16)|(p3<<24));
 }
 
 short WPGXParser::readS16()
@@ -96,7 +182,7 @@ unsigned int WPGXParser::readVariableLengthInteger()
 			// read the next 16 bit value (LSB part, in value16 resides the MSB part)
 			unsigned long lvalue16 = readU16();
 			unsigned long value32 = value16 & 0x7fff;  // mask out the MSB
-			return (value32<<16)+lvalue16;
+			return (unsigned int)((value32<<16)+lvalue16);
 		}
 		else
 		{
@@ -117,58 +203,53 @@ WPGXParser &WPGXParser::operator=(const WPGXParser &parser)
 	return *this;
 }
 
-void WPGTextDataHandler::endSubDocument()
+void WPGTextDataHandler::openParagraph(const librevenge::RVNGPropertyList &propList)
 {
-	WPG_DEBUG_MSG(("WPGTextDataHandler::endSubDocument\n"));
-}
-
-void WPGTextDataHandler::openParagraph(const WPXPropertyList &propList, const WPXPropertyListVector & /* tabStops */)
-{
-	m_painter->startTextLine(propList);
+	m_painter->openParagraph(propList);
 }
 
 void WPGTextDataHandler::closeParagraph()
 {
-	m_painter->endTextLine();
+	m_painter->closeParagraph();
 }
 
-void WPGTextDataHandler::openSpan(const WPXPropertyList &propList)
+void WPGTextDataHandler::openSpan(const librevenge::RVNGPropertyList &propList)
 {
-	m_painter->startTextSpan(propList);
+	m_painter->openSpan(propList);
 }
 
 void WPGTextDataHandler::closeSpan()
 {
-	m_painter->endTextSpan();
+	m_painter->closeSpan();
 }
 
 void WPGTextDataHandler::insertTab()
 {
-	WPG_DEBUG_MSG(("WPGTextDataHandler::insertTab\n"));
+	m_painter->insertTab();
 }
 
 void WPGTextDataHandler::insertSpace()
 {
-	m_painter->insertText(" ");
+	m_painter->insertSpace();
 }
 
-void WPGTextDataHandler::insertText(const WPXString &text)
+void WPGTextDataHandler::insertText(const librevenge::RVNGString &text)
 {
-	m_painter->insertText(text);
+	separateSpacesAndInsertText(m_painter, text);
 }
 
 void WPGTextDataHandler::insertLineBreak()
 {
-	WPG_DEBUG_MSG(("WPGTextDataHandler::insertLineBreak\n"));
+	m_painter->insertLineBreak();
 }
 
-void WPGTextDataHandler::openListElement(const WPXPropertyList &propList, const WPXPropertyListVector &/*tabStops*/)
+void WPGTextDataHandler::openListElement(const librevenge::RVNGPropertyList &propList)
 {
-	m_painter->startTextLine(propList);
+	m_painter->openListElement(propList);
 }
 
 void WPGTextDataHandler::closeListElement()
 {
-	WPG_DEBUG_MSG(("WPGTextDataHandler::closeListElement\n"));
+	m_painter->closeListElement();
 }
 /* vim:set shiftwidth=4 softtabstop=4 noexpandtab: */

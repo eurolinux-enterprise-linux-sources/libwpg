@@ -1,3 +1,8 @@
+0.2.2 - 0.3.0
+
+- Switch to librevenge
+- Miscellaneous fixes and cleanups
+
 0.1.x - 0.2.0
 
 - Rewrite the library to reuse wherever possible the libwpd types and  APIs.

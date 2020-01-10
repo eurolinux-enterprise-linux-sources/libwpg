@@ -31,13 +31,13 @@
 #include "WPGXParser.h"
 #include "WPGDashArray.h"
 #include "WPGBitmap.h"
-#include <libwpd/libwpd.h>
+#include <librevenge/librevenge.h>
 #include <vector>
 
 class WPG1Parser : public WPGXParser
 {
 public:
-	WPG1Parser(WPXInputStream *input, libwpg::WPGPaintInterface *painter);
+	WPG1Parser(librevenge::RVNGInputStream *input, librevenge::RVNGDrawingInterface *painter);
 	bool parse();
 
 private:
@@ -78,13 +78,13 @@ private:
 	bool m_graphicsStarted;
 	int m_width;
 	int m_height;
-	::WPXPropertyList m_style;
+	::librevenge::RVNGPropertyList m_style;
 	libwpg::WPGColor m_penForeColor;
 	libwpg::WPGColor m_penBackColor;
 	libwpg::WPGColor m_brushForeColor;
 	libwpg::WPGColor m_brushBackColor;
 	libwpg::WPGDashArray m_dashArray;
-	::WPXPropertyListVector m_gradient;
+	::librevenge::RVNGPropertyListVector m_gradient;
 };
 
 #endif // __WPG1PARSER_H__

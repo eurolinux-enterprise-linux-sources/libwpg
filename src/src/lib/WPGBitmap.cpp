@@ -71,7 +71,7 @@ public:
 	bool vFlip;
 	bool hFlip;
 	WPGColor *pixels;
-	::WPXBinaryData dib;
+	::librevenge::RVNGBinaryData dib;
 
 	Private(int w, int h): width(w), height(h), vRes(72), hRes(72), vFlip(false), hFlip(false), pixels(0), dib() {}
 private:
@@ -117,7 +117,7 @@ void libwpg::WPGBitmap::copyFrom(const WPGBitmap &bitmap)
 	d->height = bitmap.d->height;
 	delete [] d->pixels;
 	d->pixels = new WPGColor[d->width*d->height];
-	for(int i=0; i < d->width*d->height; i++)
+	for (int i=0; i < d->width*d->height; i++)
 		d->pixels[i] = bitmap.d->pixels[i];
 }
 
@@ -143,13 +143,13 @@ int libwpg::WPGBitmap::hres() const
 
 void libwpg::WPGBitmap::setPixel(int x, int y, const libwpg::WPGColor &color)
 {
-	if((x < 0) || (y <0) || (x >= d->width) || (y >= d->height))
+	if ((x < 0) || (y <0) || (x >= d->width) || (y >= d->height))
 		return;
 
 	d->pixels[y *d->width + x] = color;
 }
 
-const ::WPXBinaryData &libwpg::WPGBitmap::getDIB() const
+const ::librevenge::RVNGBinaryData &libwpg::WPGBitmap::getDIB() const
 {
 	if (d->dib.size() || d->height <= 0 || d->width <= 0)
 		return d->dib;
@@ -177,10 +177,10 @@ const ::WPXBinaryData &libwpg::WPGBitmap::getDIB() const
 
 	// Create DIB file header
 	writeU16(tmpDIBBuffer, tmpBufferPosition, 0x4D42);  // Type
-	writeU32(tmpDIBBuffer, tmpBufferPosition, tmpDIBFileSize); // Size
+	writeU32(tmpDIBBuffer, tmpBufferPosition, (int) tmpDIBFileSize); // Size
 	writeU16(tmpDIBBuffer, tmpBufferPosition, 0); // Reserved1
 	writeU16(tmpDIBBuffer, tmpBufferPosition, 0); // Reserved2
-	writeU32(tmpDIBBuffer, tmpBufferPosition, tmpDIBOffsetBits); // OffsetBits
+	writeU32(tmpDIBBuffer, tmpBufferPosition, (int) tmpDIBOffsetBits); // OffsetBits
 
 	WPG_DEBUG_MSG(("WPGBitmap: DIB file header end = %i\n", tmpBufferPosition - 1));
 
@@ -196,7 +196,7 @@ const ::WPXBinaryData &libwpg::WPGBitmap::getDIB() const
 	writeU16(tmpDIBBuffer, tmpBufferPosition, 1); // Planes
 	writeU16(tmpDIBBuffer, tmpBufferPosition, 32); // BitCount
 	writeU32(tmpDIBBuffer, tmpBufferPosition, 0); // Compression
-	writeU32(tmpDIBBuffer, tmpBufferPosition, tmpDIBImageSize); // SizeImage
+	writeU32(tmpDIBBuffer, tmpBufferPosition, (int)tmpDIBImageSize); // SizeImage
 	writeU32(tmpDIBBuffer, tmpBufferPosition, (int)(hres()*100.0/2.54)); // XPelsPerMeter
 	writeU32(tmpDIBBuffer, tmpBufferPosition, (int)(vres()*100.0/2.54)); // YPelsPerMeter
 	writeU32(tmpDIBBuffer, tmpBufferPosition, 0); // ColorsUsed

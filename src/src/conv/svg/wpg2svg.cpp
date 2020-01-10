@@ -28,9 +28,9 @@
 #include <sstream>
 #include <stdio.h>
 #include <string.h>
-#include "libwpg.h"
-#include <libwpd-stream/libwpd-stream.h>
-#include <libwpd/libwpd.h>
+#include <librevenge/librevenge.h>
+#include <librevenge-stream/librevenge-stream.h>
+#include <libwpg/libwpg.h>
 
 namespace
 {
@@ -41,14 +41,7 @@ int printUsage()
 	printf("\n");
 	printf("Options:\n");
 	printf("--help                Shows this help message\n");
-	printf("--version             Output wpg2svg version \n");
 	return -1;
-}
-
-int printVersion()
-{
-	printf("wpg2svg %s\n", LIBWPG_VERSION_STRING);
-	return 0;
 }
 
 } // anonymous namespace
@@ -62,9 +55,7 @@ int main(int argc, char *argv[])
 
 	for (int i = 1; i < argc; i++)
 	{
-		if (!strcmp(argv[i], "--version"))
-			return printVersion();
-		else if (!file && strncmp(argv[i], "--", 2))
+		if (!file && strncmp(argv[i], "--", 2))
 			file = argv[i];
 		else
 			return printUsage();
@@ -73,7 +64,7 @@ int main(int argc, char *argv[])
 	if (!file)
 		return printUsage();
 
-	WPXFileStream input(file);
+	librevenge::RVNGFileStream input(file);
 
 	if (!libwpg::WPGraphics::isSupported(&input))
 	{
@@ -81,14 +72,21 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	::WPXString output;
-	if (!libwpg::WPGraphics::generateSVG(&input, output))
+	librevenge::RVNGStringVector vec;
+	librevenge::RVNGSVGDrawingGenerator generator(vec, "");
+	bool result = libwpg::WPGraphics::parse(&input, &generator);
+	if (!result || vec.empty() || vec[0].empty())
 	{
 		std::cerr << "ERROR: SVG Generation failed!" << std::endl;
 		return 1;
 	}
 
-	std::cout << output.cstr() << std::endl;
+#if 1
+	std::cout << "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n";
+	std::cout << "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"";
+	std::cout << " \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n";
+#endif
+	std::cout << vec[0].cstr() << std::endl;
 	return 0;
 }
 /* vim:set shiftwidth=4 softtabstop=4 noexpandtab: */

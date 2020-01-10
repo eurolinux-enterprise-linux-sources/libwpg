@@ -7,7 +7,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * Major Contributor(s):
- * Copyright (C) 2004-2005 William Lachance (wrlach@gmail.com)
+ * Copyright (C) 2006 Ariya Hidayat (ariya@kde.org)
  *
  * For minor contributions see the git repository.
  *
@@ -23,38 +23,33 @@
  * Corel Corporation or Corel Corporation Limited."
  */
 
-#ifndef WPGINTERNALSTREAM_H
-#define WPGINTERNALSTREAM_H
-#include <libwpd-stream/WPXStream.h>
+#ifndef __WPGRAPHICS_H__
+#define __WPGRAPHICS_H__
 
-class WPGInternalInputStream : public WPXInputStream
+#include <librevenge/librevenge.h>
+
+#ifdef DLL_EXPORT
+#ifdef LIBWPG_BUILD
+#define WPGAPI __declspec(dllexport)
+#else
+#define WPGAPI __declspec(dllimport)
+#endif
+#else
+#define WPGAPI
+#endif
+
+namespace libwpg
+{
+enum WPGFileFormat { WPG_AUTODETECT = 0, WPG_WPG1, WPG_WPG2 };
+
+class WPGraphics
 {
 public:
-	WPGInternalInputStream(const unsigned char *data, unsigned long size);
-	virtual ~WPGInternalInputStream();
-
-	virtual bool isOLEStream()
-	{
-		return false;
-	}
-	virtual WPXInputStream *getDocumentOLEStream(const char * /*name*/)
-	{
-		return 0;
-	}
-
-	const virtual unsigned char *read(unsigned long numBytes, unsigned long &numBytesRead);
-	virtual int seek(long offset, WPX_SEEK_TYPE seekType);
-	virtual long tell();
-	virtual bool atEOS();
-
-private:
-	long m_offset;
-	unsigned long m_size;
-	const unsigned char *m_data;
-	unsigned char *m_tmpBuf;
-	WPGInternalInputStream(const WPGInternalInputStream &);
-	WPGInternalInputStream &operator=(const WPGInternalInputStream &);
+	static WPGAPI bool isSupported(librevenge::RVNGInputStream *input);
+	static WPGAPI bool parse(librevenge::RVNGInputStream *input, librevenge::RVNGDrawingInterface *drawingInterface, WPGFileFormat fileFormat = WPG_AUTODETECT);
 };
 
-#endif
+} // namespace libwpg
+
+#endif //  __WPGRAPHICS_H__
 /* vim:set shiftwidth=4 softtabstop=4 noexpandtab: */

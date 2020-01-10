@@ -1,91 +1,454 @@
-2013-04-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [b70286800b809c2756e3f5b7e1d07bfef36a77a7]
+2014-05-23  David Tardon  <dtardon@redhat.com>  [b278f7694ba1fa4bf5755c99c4890b95a3c23837]
+
+	prepare for a release
+
+
+2014-05-23  David Tardon  <dtardon@redhat.com>  [8ae0c619b7ff6d422ad2a854141199393c4dc4f9]
+
+	adapt to librevenge changes
+
+
+2014-05-16  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [134ca5090dd1096f9af5122e4cf8917015c44401]
+
+	drawConnector missing
+
+
+2014-04-16  David Tardon  <dtardon@redhat.com>  [e6255edf494e9acd1702ffe822c46166673989ce]
+
+	libwpd is impl. detail -> hide it
+
+
+2014-04-16  David Tardon  <dtardon@redhat.com>  [26b00bf4571fe9f9836a188f9d794791688d0429]
+
+	require librevenge-stream too
+
+
+2014-01-01  David Tardon  <dtardon@redhat.com>  [4a1a37e779753c145445ce8c6410444969b930e3]
+
+	simplify this
+
+
+2014-01-01  David Tardon  <dtardon@redhat.com>  [f5dfdaeec1ee2c023f7de2609162af97540b6486]
+
+	cppcheck: expression is always false
+
+	(thanks to David Binderman for pointing this out)
+
+2013-12-19  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [6baa1ec26a1a9de470cdbb563446c1a22ed4f7e2]
+
+	Adapt to changes to RVNGTextInterface
+
+
+2013-12-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [540ddb2bf26bf5aa6d60a05a767de528b90adcfa]
+
+	Export only needed stuff on Windows
+
+
+2013-12-17  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [8fdf5e37c5dcdda711190809b19b5c13f1e87a21]
+
+	Adapt to librevenge changes
+
+
+2013-12-12  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [e6b29174504cf14324dc790c6d7f1125b30e4865]
+
+	Adapt to changes in librevenge
+
+
+2013-12-12  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [6c5e99c4dbeebe7cba1e428f4fe7845f9a1c763e]
+
+	Revert "WPG2Parser: remove unused <<using namespace>>"
+
+	Not so "unused" after all :)
+
+	This reverts commit 8d31338ef4fc54168f50b1d3be57ac9a0e100ae4.
+
+2013-12-11  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [52e127431f6564ac017632590a3926d7e774f6d8]
+
+	Allow equal identing of functions
+
+
+2013-12-11  osnola  <alonso@loria.fr>  [8d31338ef4fc54168f50b1d3be57ac9a0e100ae4]
+
+	WPG2Parser: remove unused <<using namespace>>
+
+
+2013-12-09  David Tardon  <dtardon@redhat.com>  [a5c11756e6dae9477ed3d7221833d8c63d44d37c]
+
+	reorganize to only need cleanup at one place
+
+
+2013-12-09  David Tardon  <dtardon@redhat.com>  [f9e2ab427575aba23a5a2036e07499286a4718c9]
+
+	there is no need to check ptr for 0 before delete
+
+	... and doing it throws coverity off.
+
+2013-12-05  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [db5d749752c975f9bf593541b7bbf3578a8e3672]
+
+	Adapt to changes of librevenge
+
+
+2013-12-03  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [df655d46fa155cd46f015a0187978a10a19d2e92]
+
+	Be sure the right thing is spit out as text
+
+
+2013-12-03  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [a482e916a40699ef004a0b14d9184c305a977f5c]
+
+	Don't dupplicate those properties
+
+
+2013-12-01  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [e41d9c612e40df6aacea62bbe155391c9215db15]
+
+	Adapt to libwpd namespacing
+
+
+2013-11-30  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [83896353f441051cc6d53b5788b1ed937111c35c]
+
+	Allow wpg2raw output callgraph
+
+
+2013-11-28  David Tardon  <dtardon@redhat.com>  [2a2e13557cd651a9fdede6f8a647177a80793ffe]
+
+	add myself to AUTHORS file
+
+
+2013-11-28  David Tardon  <dtardon@redhat.com>  [113584d73aa6e20d1f925217b3a9346047d10269]
+
+	add options file for astyle
+
+
+2013-11-25  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [a92902038c3589834a7d5f08711ebbcbaccbda03]
+
+	astyle -HU -A1 -k3 -y -n -t -r \*.cpp \*.h
+
+
+2013-11-23  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [856d4729c39a798fb4143208627d597078498df2]
+
+	drawPoly*: vertices -> "svg:points"
+
+
+2013-11-23  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [32ab8b23703dc3ac5dacb7511cbb7f1d300d8915]
+
+	Fold in the gradient
+
+
+2013-11-22  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [7e08c6626a1b58a15fee1129140691597d0c78b8]
+
+	openTable: columns -> librevenge:table-columns + fold data in insertEquation
+
+
+2013-11-22  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [dccc3cc4f285f9119fb13edc38c9e3a8f65a5e73]
+
+	insertField: type -> librevenge:field-type
+
+
+2013-11-22  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [78dc47cc6792ebc62453f46f4bf55d9c69d424c7]
+
+	Folding in the section columns
+
+
+2013-11-21  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [d9a91d8510dd714ad997594578c97983e8565730]
+
+	Fold tabStops into the propList
+
+
+2013-11-20  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [2afcdb02e081e04ca1f8b024494fb6aeac8c7384]
+
+	Folding paths into propLists
+
+
+2013-11-14  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [66234afc9c2b6f788622828c5625387fd839beca]
+
+	Adapt to API change in librevenge
+
+
+2013-11-07  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [eb8998dbdc87a247e0598ea9a481003e3fbf4ef4]
+
+	Small fix
+
+
+2013-11-06  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [cd5dd09709891a4b125a50a65ef02538cdd4cd13]
+
+	Simplify public interface + callcatcher action
+
+
+2013-11-05  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [078167d04a66b70e35ba9af78ebbebd60e0431be]
+
+	SVG is librevenge's core
+
+
+2013-11-05  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [c577dc0128934872eda291e9cfb5033e03b30ca9]
+
+	Port to the librevenge-generators
+
+
+2013-11-05  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [f9757c9d888bb18ec3fbd4dacfc3e85af339b87c]
+
+	librevenge namespace
+
+
+2013-11-04  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [4045f41f1f0d39f73c47ab4cb1ced13d9562ffa8]
+
+	The library does not depend on the steam implementations
+
+
+2013-11-04  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [bbaaaacac41f59a178968b726e29985385fea437]
+
+	Depend on right libraries
+
+
+2013-11-04  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [33888bf408c81f41e7b1edea466db3a89ad6c0e1]
+
+	Properties are now in librevenge: namespace + some fixes
+
+
+2013-11-03  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [b165cca501e5f9e84bc565cf95b310fccb6000eb]
+
+	Don't forward-declare those ones
+
+
+2013-11-02  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [28647e216df8e0dac28a5d1394ece1b4443a8a8c]
+
+	Adapt to the new RVNGInputStream API
+
+
+2013-11-02  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [2043e8b8cd8bc318fe70eb9a6938bb8387ec6283]
+
+	Use librevenge
+
+
+2013-09-02  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [ad3c43ffdf657043cd010c4928bc327a31cceedf]
+
+	Historically, gradient is linear if not specified the draw:style
+
+	(cherry picked from commit e51d9ed2b5a62bb15aa3cdd34035c619cb249265)
+
+2013-08-27  osnola  <alonso@loria.fr>  [c31734a918f88a8b6b707082fc3e70c9199ebc14]
+
+	Silent more warnings: mainly cppcheck warnings... (cherry picked from commit 471f80bb6fbfbd126b0ecdf2491e3e341c348622)
+
+	Signed-off-by: osnola <alonso@loria.fr>
+
+2013-08-26  Laurent Alonso  <laurent.alonso@inria.fr>  [ad8a5973c2dfdbf7ece07e3a0e211bdcf6889670]
+
+	Silence some warnings
+
+	(cherry picked from commit 403f438066336a95a2f0ebcca452f09cf3b5add0)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-26  osnola  <alonso@MacBook-Air-de-laurent.local>  [025a60fec95b4deb8aca1658e8da7062d2454bc0]
+
+	Correction in dash-array: when the dimensions are given with WPX_PERCENT, use the line width to compute the final dimensions.
+
+	(cherry picked from commit 085ed5000a823f4c68953c1616f0fdb9c183a7a7)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-25  Laurent Alonso  <laurent.alonso@inria.fr>  [926a77c1e4dfdc9d44a14e4921614bcf0f311394]
+
+	Changes to dash-array
+
+	(cherry picked from commit cd463673755d96241cf408dfb5863f22dc5d22ac)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-25  Laurent Alonso  <laurent.alonso@inria.fr>  [98533ab0c6552606fe45aaaa1590636fee93b5d2]
+
+	Port useful stuff from libcdr
+
+	(cherry picked from commit 2a949eb54004956ba425c162c345e8376a55051f)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-25  Laurent Alonso  <laurent.alonso@inria.fr>  [0e46c9861c704021a9d2ae463acaeb8b1f135cc8]
+
+	Port useful stuff from libmspub
+
+	(cherry picked from commit bf104da1eaea6403b7e64cb55e9e9602fb7211d2)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-23  Laurent Alonso  <laurent.alonso@inria.fr>  [ce6ef0ffdfaecea47c20208041ccc14066f3dd0a]
+
+	Extract some logic into its own function
+
+	(cherry picked from commit 2f96abbdc0a68d8c0ebc43a51223487c3a8b6b96)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-23  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [46b1aac9cb66d25551a565973a9fd1273602e1b2]
+
+	Conditionalize the xml header for future change
+
+	(cherry picked from commit 0f82c4ed5e177de4a478a943708f912c5acf7736)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-23  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [8c4a2098c4ae43d0a271e1e6a4c5347e82308187]
+
+	conditionalize xml namespace
+
+	(cherry picked from commit fb07929e7b89ac5cde5c18086f244eb310a849fc)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-23  Laurent Alonso  <laurent.alonso@inria.fr>  [84276a5b3fc4659aef66c799dd8969263da7105d]
+
+	Port changes from MSPUBSVGGenerator to WPGSVGGenerator
+
+	(cherry picked from commit c18735c027da1d1147319877ecc82625fcff3182)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+	Conflicts:
+		src/lib/WPGSVGGenerator.cpp
+
+2013-08-23  Laurent Alonso  <laurent.alonso@inria.fr>  [815ab91f92541d3ad0773e3224d8d3ad2aacd0e1]
+
+	Even more fixes for the WPGSVGGenerator
+
+	(cherry picked from commit 96b3a4ee5fd9f5fb27fa8b88326772d12880ae27)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-23  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [de6a7eb26c0e44b32e8afb1d1e15c2e9f4608894]
+
+	Make WPGSVGGenerator able to produce an SVG per page
+
+	(cherry picked from commit 8c690a481ce97faee5421b672a06734ae4e6c869)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+	Conflicts:
+		src/lib/WPGSVGGenerator.cpp
+
+2013-08-22  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [553090043accb8b465ad9e915c39cf9900336615]
+
+	astyle -b -k3 -y -n -r -t \*.cpp \*.h
+
+
+2013-08-22  Laurent Alonso  <laurent.alonso@inria.fr>  [4e95dcc06c1ce02120e70789d99678acad40e230]
+
+	More stuff for the svg-generator class
+
+	(cherry picked from commit 36d26ed222939c25c37f12b3711cd02c02ac42f5)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-21  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [402e024b8b1ab8d6c54706941baa0e7b1a45c8e9]
+
+	Mismatched tags
+
+	(cherry picked from commit 9e6c8e05b6453db3a573bc0ff9d510a12060e24b)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-08-21  Laurent Alonso  <laurent.alonso@inria.fr>  [ced9cb46f3f0a655853c240f4c4473b7c226da4a]
+
+	Miscellaneous fixes of the svg-generator class
+
+	(cherry picked from commit f32fdbd19a47f07d6b76b2a8546ea75535625b49)
+	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
+
+2013-05-10  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [8cd6388345d0ee21c98e180035641e1e2dc5846d]
+
+	Update/delete alternative build systems
+
+
+2013-05-10  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [b04880bded34e6e4db6d7229a1f41b4fb2a87f68]
+
+	libwpd already does this conversion, so don't dupplicate (cherry picked from commit c57f196ea537a9898d83806e17eb05690d892cd7)
+
+
+2013-05-10  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [deb9f845d442066c1dda9a66e1a5ceebe8817802]
+
+	Make Michael Stahl happy (libwpg part) (cherry picked from commit 540e6a4cf65bcbe341630dcef4bb8020888f9b31)
+
+	Conflicts:
+		configure.ac
+		libwpg-0.2.pc.in
+		libwpg-0.3.pc.in
+		libwpg.pc.in
+
+2013-04-25  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [8ea1270029a79958ceeb76f01fc9bbc6702a2f3e]
+
+	Some sane defaults for the build
+
+
+2013-04-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [6f55ce4666f504b0ae3d666c98ee00e471c1161a]
 
 	Fix distcheck and LO build
 
 
-2013-04-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [78d42a7c4f45db8c14d5de78d2ca997746952643]
+2013-04-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [f89f4adb4c996f29dbf3f6b90a39888d7189c1b8]
 
 	Small fixup
 
 
-2013-04-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [0779ca85cce5d1eebcb23935a4312496e4b41bc1]
+2013-04-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [9cc9228cd46e1c01d3f0289724beae9e17939782]
 
 	By agreement of all contributors, dual-licensing under MPL2+ and LGPL2.1+
 
 
-2013-01-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [6fad6ebba6fa1b3765cb0f97b4df334c4e7ac0f4]
+2013-01-18  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [fdec4fe48bf96841604971374b2e0bb68f025750]
 
 	Fix build with newer autotools
 
 
-2012-12-16  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [307e5a89cce596a8f23b35df50e51b11fc0782bd]
+2012-12-16  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [e6bcf9d0eafef7335ec17fabae54ae835a8c442f]
 
 	Change some changes to project files
 
 
-2012-12-16  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [1250f63bbffdef7fc14efc8fd2ac27405b45dc31]
+2012-12-16  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [e9b636b6dceedc166c8ab37f080902cfa0b45b8b]
 
 	These ones don't need to be executable
 
 
-2012-12-16  David Tardon  <dtardon@redhat.com>  [33a2a90d334a747d5fbd19d18a1ec06e1075afb6]
+2012-12-16  David Tardon  <dtardon@redhat.com>  [3e346285869ef7202b0e0c0908cf9afcbe2200d3]
 
 	coverity: drop useless check for NULL before using delete
 
 	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
 
-2012-12-16  David Tardon  <dtardon@redhat.com>  [bec3473b25deff39f6d910c48673984170d7d275]
+2012-12-16  David Tardon  <dtardon@redhat.com>  [ec66ff0af5bbe808f534107528aee9c4e76277d2]
 
 	coverity: depth is always 1, 2, 4 or 8 here
 
 	Signed-off-by: Fridrich Štrba <fridrich.strba@bluewin.ch>
 
-2012-10-06  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [bf50696797e68e844bef73611e37bb81e2ad0616]
+2012-10-06  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [770e100e61af015f793d0613269ea9d1985a369a]
+
+	Some more configurability about warnings
+
+	Conflicts:
+		configure.ac
+
+2012-10-06  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [ca40405a9cd7a69e441b6cad4160fff8ee2ae7e8]
 
 	Small changes to the visual studio projects
 
 
-2012-10-06  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [043e338985ec92bca52aa0f6eef3b32f050b07b5]
-
-	Some more configurability about warnings
-
-
-2012-09-14  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [f564be29f4824ad1899441b132644bbd56a9c50b]
+2012-09-16  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [eaa1f776cee04ef9f40341f28f82b1314df0d295]
 
 	Specify LIBWPD_LIBDIR and LIBWPD_INCLUDES as env. variables
 
 
-2012-09-14  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [2f6f7890947f36c144df9c99338dc5a45dfb5c39]
-
-	Bump version
-
-
-2012-09-14  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [7fb0e7c6e933592c6d4d0eb4bf0e340e50b090da]
+2012-09-14  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [433236e506ed2cd812ec225c40f6d59199c24ade]
 
 	Dist the VS2010 files
 
 
-2012-09-14  Voreppe LibreOffice Builder  <voreppe@nomail.com>  [5f7801e3b1e842f9ffcbeee81134f2f67a7f81ed]
+2012-09-14  Voreppe LibreOffice Builder  <voreppe@nomail.com>  [a0a89555aeba0f60abd9ecc075e49e245f629034]
 
 	Adding VS2010 project files
 
 
-2012-09-14  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [64be18a905561ba9a9cea015f2f651fa13e61e60]
+2012-09-14  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [a2896704d2333440d9f402074e72dd54069596b5]
 
 	Dist the VS2008 files
 
 
-2012-09-14  Voreppe LibreOffice Builder  <voreppe@nomail.com>  [43fc4f40e482d5101d23b9a91d839e4e1f19407d]
+2012-09-14  Voreppe LibreOffice Builder  <voreppe@nomail.com>  [2dfa962fe42d1f6417cf780726ed6db7e65be532]
 
 	Add VS2008 project files
 
 
-2012-09-11  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [1fabf39da889c930883343796cc76ef4badcc497]
+2012-09-11  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [35018ca4b63b8a882b8dfc7dc62481a58e808040]
 
 	Little modification of the VS6 build
 
 
-2012-09-10  Stephan Bergmann  <sbergman@redhat.com>  [1918d136cd063bda4b39453917ac0e3940fbbe98]
+2012-09-10  Stephan Bergmann  <sbergman@redhat.com>  [f98c1f4308b75ccbb2b98ed8b4011b4f84e841d3]
 
 	-Werror,-Wunused-private-field
 
@@ -95,49 +458,60 @@
 	part is already covered by 5cf190eb365df00a1446738b3ab0d3e55291def3 "Fix clang
 	build").
 
-2012-08-31  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [b99c7b7a39f7bbf64718693afb271b2321254c58]
+2012-08-31  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [499768a10562aa546f5192594e572ce0dbba8453]
 
 	Avoid warnings of autotools
 
 
-2012-07-23  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [71de4ed1fc61714ea454d4db08dac6a1fbbb2e50]
+2012-07-23  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [630ecb98adea61df3baed7b19aa8a3c7a87c8f2c]
 
 	Appease automake 1.12
 
 
-2012-07-01  David Tardon  <dtardon@redhat.com>  [00292458bc10c680265444a6651bc280f71307ec]
+2012-07-01  David Tardon  <dtardon@redhat.com>  [5679ab2b21ba0dadb134d5a077048b20c33674f9]
 
 	coverity: avoid implicit sign extension in cast
 
 
-2012-07-01  David Tardon  <dtardon@redhat.com>  [214670b6476fde7ae33350d5ee544af0a37e1eef]
+2012-07-01  David Tardon  <dtardon@redhat.com>  [798dcc6e0637651c77ae5e528dcb0b4914c26b4d]
 
 	coverity: protect against self-assignment
 
 
-2012-07-01  David Tardon  <dtardon@redhat.com>  [96c80c8d560aa5be193de44352ff9bcdc5d6b30a]
+2012-07-01  David Tardon  <dtardon@redhat.com>  [92166ae376c1901170a36fe6478c97a319f3fec1]
 
 	coverity: the condition is always false
 
 
-2012-04-24  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [df4eaec7c54fc2a465acfb9ed3cb23f2fe108799]
+2012-06-06  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [a8aadaceefd7ceeb92f1f80303b516bf4c9f8eb3]
+
+	fix some clang warnings
+
+
+2012-06-06  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [8a733fb26d44626afce0aadecf8d369fd77e188e]
+
+	Warn a bit more and have it easier in LO
+
+
+2012-04-24  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [5cf190eb365df00a1446738b3ab0d3e55291def3]
 
 	Fix clang build
 
 
-2012-01-27  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [b286cf9ba51ccf40a68abfca9ad468ed346ef2bb]
+2012-01-27  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [9b73338358e166d8b8011319750bcc73450f441a]
 
 	Fix the buildnumber.sh script
 
 
-2012-01-17  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [a88ddb88f32a180fc478197e8d33657801b9de61]
+2012-01-17  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [a05f5f9fb934ab0f8497a2cba709df41c8a5fd63]
 
 	Backport changes from libvisio
 
-	Conflicts:
 
-		src/lib/WPGPaintInterface.h
-		src/lib/WPGXParser.cpp
+2011-11-29  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [0cf2508dab181614f0739353e6105d5ff710a54e]
+
+	Some ABI/API breakage for more rich text in 0.3.x
+
 
 2011-11-24  Fridrich Štrba  <fridrich.strba@bluewin.ch>  [fe3785782a3254ae21af8c3d698edaf34ab1cb35]
 

@@ -77,7 +77,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = build/win32
+subdir = inc/libwpg
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -256,23 +256,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 EXTRA_DIST = \
-	libwpg.dsw \
-	libwpg.dsp \
-	wpg2raw.dsp \
-	wpg2svg.dsp \
-	\
-	libwpg.vcproj.sln \
-	libwpg.vcproj \
-	wpg2raw.vcproj \
-	wpg2svg.vcproj \
-	\
-	libwpg.vcxproj.sln \
-	libwpg.vcxproj \
-	wpg2raw.vcxproj \
-	wpg2svg.vcxproj \
-	\
-	compile-resource \
-	lt-compile-resource
+	libwpg.h \
+	WPGraphics.h
 
 all: all-am
 
@@ -286,9 +271,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign build/win32/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign inc/libwpg/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign build/win32/Makefile
+	  $(AUTOMAKE) --foreign inc/libwpg/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \

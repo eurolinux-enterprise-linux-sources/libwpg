@@ -1,5 +1,5 @@
 %define name libwpg
-%define version 0.2.2
+%define version 0.3.0
 %define RELEASE 1
 %define release     %{?CUSTOM_RELEASE} %{!?CUSTOM_RELEASE:%RELEASE}
 
@@ -80,7 +80,7 @@ umask 022
 %defattr(644,root,root,755)
 %{_libdir}/libwpg*.so
 %{_libdir}/pkgconfig/libwpg*.pc
-%{_includedir}/libwpg-0.2/libwpg
+%{_includedir}/libwpg-0.3/libwpg
 
 %if %{!?_without_docs:1}%{?_without_docs:0}
 %files docs

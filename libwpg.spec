@@ -2,7 +2,7 @@
 
 Name:           libwpg
 Version:        0.2.2
-Release:        2%{?dist}
+Release:        4%{?dist}
 Summary:        Library for reading WordPerfect Graphics images
 
 Group:          System Environment/Libraries
@@ -91,6 +91,12 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
 
 %changelog
+* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 0.2.2-4
+- Mass rebuild 2014-01-24
+
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 0.2.2-3
+- Mass rebuild 2013-12-27
+
 * Tue Jun 25 2013 David Tardon <dtardon@redhat.com> - 0.2.2-2
 - bump release
 
